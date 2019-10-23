@@ -9,25 +9,29 @@
     "File Sharing"
   ],
   "author": "Saurabh Nandu saurabh@systenics.com",
-  "contributors": [{
-  "name": "Balkrishna Sawant",
-  "email": "balkrishnasawant0617@gmail.com"  
-},{
-  "name": "Pravin Kumar Mishra",
-  "email": "mishrapravin827@gmail.com"  
-}], 
+  "contributors": [
+    {
+      "name": "Balkrishna Sawant",
+      "email": "balkrishnasawant0617@gmail.com"
+    },
+    {
+      "name": "Pravin Kumar Mishra",
+      "email": "mishrapravin827@gmail.com"
+    }
+  ],
   "homepage": "http://chat.systenics.com/",
   "repository": {
-  "type": "git",
-  "url": "https://github.com/systenics/ChatRoom.git"
-},
+    "type": "git",
+    "url": "https://github.com/systenics/ChatRoom.git"
+  },
   "private": "false",
   "bundleDependencies": [
     "passport.socketio"
   ],
   "dependencies": {
-    "body-parser": "^1.13.2",
-    "express": "3.2.*",
+    "body-parser": "^1.18.2",
+    "cors": "^2.8.4",
+    "express": "^3.2.6",
     "formidable": "^1.0.17",
     "fs": "0.0.2",
     "multer": "^0.1.8",

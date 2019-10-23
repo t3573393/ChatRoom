@@ -40,7 +40,7 @@ angular.module('Controllers')
         }
     };
 })
-.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, Upload, $timeout, sendImageService){		// Chat Page Controller
+.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService){		// Chat Page Controller
 	// Varialbles Initialization.
 	$scope.isMsgBoxEmpty = false;
 	$scope.isFileSelected = false;
@@ -49,17 +49,280 @@ angular.module('Controllers')
 	$scope.chatMsg = "";
 	$scope.users = [];
 	$scope.messeges = [];
+	console.log("inicializando variables...");
+	$scope.autoScroll = true;
+	$scope.roomCode = $rootScope.roomCode;
+	$scope.mensajesNuevos = 0;
+		
+	function beep() {
+		var snd = new Audio("data:audio/wav;base64,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qJrx4KOQjahZxWbcZgztj2c49nKmkId44S71j0c8eV9yDK6uPRzx5X18eDvjvQ6yKo9ZSS6l//8elePK/Lf//IInrOF/FvDoADYAGBMGb7FtErm5MXMlmPAJQVgWta7Zx2go+8xJ0UiCb8LHHdftWyLJE0QIAIsI+UbXu67dZMjmgDGCGl1H+vpF4NSDckSIkk7Vd+sxEhBQMRU8j/12UIRhzSaUdQ+rQU5kGeFxm+hb1oh6pWWmv3uvmReDl0UnvtapVaIzo1jZbf/pD6ElLqSX+rUmOQNpJFa/r+sa4e/pBlAABoAAAAA3CUgShLdGIxsY7AUABPRrgCABdDuQ5GC7DqPQCgbbJUAoRSUj+NIEig0YfyWUho1VBBBA//uQZB4ABZx5zfMakeAAAAmwAAAAF5F3P0w9GtAAACfAAAAAwLhMDmAYWMgVEG1U0FIGCBgXBXAtfMH10000EEEEEECUBYln03TTTdNBDZopopYvrTTdNa325mImNg3TTPV9q3pmY0xoO6bv3r00y+IDGid/9aaaZTGMuj9mpu9Mpio1dXrr5HERTZSmqU36A3CumzN/9Robv/Xx4v9ijkSRSNLQhAWumap82WRSBUqXStV/YcS+XVLnSS+WLDroqArFkMEsAS+eWmrUzrO0oEmE40RlMZ5+ODIkAyKAGUwZ3mVKmcamcJnMW26MRPgUw6j+LkhyHGVGYjSUUKNpuJUQoOIAyDvEyG8S5yfK6dhZc0Tx1KI/gviKL6qvvFs1+bWtaz58uUNnryq6kt5RzOCkPWlVqVX2a/EEBUdU1KrXLf40GoiiFXK///qpoiDXrOgqDR38JB0bw7SoL+ZB9o1RCkQjQ2CBYZKd/+VJxZRRZlqSkKiws0WFxUyCwsKiMy7hUVFhIaCrNQsKkTIsLivwKKigsj8XYlwt/WKi2N4d//uQRCSAAjURNIHpMZBGYiaQPSYyAAABLAAAAAAAACWAAAAApUF/Mg+0aohSIRobBAsMlO//Kk4soosy1JSFRYWaLC4qZBYWFRGZdwqKiwkNBVmoWFSJkWFxX4FFRQWR+LsS4W/rFRb/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////VEFHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU291bmRib3kuZGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjAwNGh0dHA6Ly93d3cuc291bmRib3kuZGUAAAAAAAAAACU=");  
+		snd.play();
+	};
+
+	function SumaMensaje(){
+		if($rootScope.loggedIn == true && $scope.autoScroll == false){
+			$scope.mensajesNuevos = $scope.mensajesNuevos + 1;
+			$rootScope.title = " ("+$scope.mensajesNuevos+")";
+			console.log("Mensaje entrante ("+$scope.mensajesNuevos+")...");
+		}
+	};
+	function ScrolltoBottom(){
+		console.log("autoScroll = " + $scope.autoScroll + "- loggedIn = " + $rootScope.loggedIn);
+		
+			console.log("Entro scroll...");
+			$timeout(function() {
+				if($rootScope.loggedIn == true && $scope.autoScroll == true && $scope.mensajesNuevos == 0){				
+					$("#divBox").scrollTop($("#divBox")[0].scrollHeight);	
+					console.log("Aplicó scroll...");
+				}
+			}, 20);
+				
+		
+			
+	}
 	
+		
 	// redirection if user is not logged in.
 	if(!$rootScope.loggedIn){
 		$location.path('/v1/');
 	}
+	
+	$window.onfocus = function(){
+		 console.log("Tiene foco.")
+		 $scope.autoScroll = true;
+		 $scope.mensajesNuevos = 0;
+		 $rootScope.title = "";
+		  $socket.emit("user-activo",{ username : $rootScope.username}, function(data){
+				//delivery report code goes here
+				/*if (data.success == true) {
+					$scope.chatMsg = "";
+					$scope.setFocus = true;				
+				}*/
+			});
+	}
+	$window.onblur = function(){
+		console.log("Perdio foco.")
+		$scope.autoScroll = false;
+		$socket.emit("user-inactivo",{ username : $rootScope.username}, function(data){
+				//delivery report code goes here
+				/*if (data.success == true) {
+					$scope.chatMsg = "";
+					$scope.setFocus = true;				
+				}*/
+			});
+    }
+	
+// ==================================  MEMES  ===============================
+
+	$scope.memes = [	
+	];
+
+	$scope.enviarMEME = function(url){
+		$scope.isFileSelected = false;
+			$scope.isMsg = true;
+			var dateString = formatAMPM(new Date());
+		$socket.emit("send-message",{ username : $rootScope.username, userAvatar : $rootScope.userAvatar, msg : url, isImageMSG: false, isMeme: true, hasMsg : $scope.isMsg , hasFile : $scope.isFileSelected , msgTime : dateString, roomCode : $rootScope.roomCode }, function(data){
+				//delivery report code goes here
+				if (data.success == true) {
+					$scope.chatMsg = "";
+					$scope.setFocus = true;				
+				}
+			});
+		
+		$socket.emit("send-meme",{username : $rootScope.username, msg : url, roomCode : $rootScope.roomCode }, function(data){
+				if (data.success == true) {
+					$scope.chatMsg = "";
+					$scope.setFocus = true;				
+				}
+		});
+		
+		
+		
+	}
+	$scope.removeMeme = function(url){
+		$socket.emit("remove-meme",{username : $rootScope.username, msg : url, roomCode : $rootScope.roomCode }, function(data){
+				if (data.success == true) {
+					$scope.chatMsg = "";
+					$scope.setFocus = true;				
+				}
+		});
+	}
+	$scope.sendMeme = function(){
+			$scope.isFileSelected = false;
+			$scope.isMsg = true;
+			var dateString = formatAMPM(new Date());
+			
+			//addMeme({url: $scope.chatMsg});
+			
+			$socket.emit("send-message",{ username : $rootScope.username, userAvatar : $rootScope.userAvatar, msg : $scope.chatMsg, isImageMSG: false, isMeme: true, hasMsg : $scope.isMsg , hasFile : $scope.isFileSelected , msgTime : dateString, roomCode : $rootScope.roomCode }, function(data){
+				//delivery report code goes here
+				if (data.success == true) {
+					$scope.chatMsg = "";
+					$scope.setFocus = true;				
+				}
+			});
+			if($scope.chatMsg != undefined && $scope.chatMsg.trim() != ''){
+				$socket.emit("send-meme",{username : $rootScope.username, msg : $scope.chatMsg, roomCode : $rootScope.roomCode }, function(data){
+					if (data.success == true) {
+						$scope.chatMsg = "";
+						$scope.setFocus = true;				
+					}
+				});
+			}
+	}
+		
+	// recieving new text message
+	$socket.on("new meme", function(data){
+		if(data.username == $rootScope.username){
+			data.ownMsg = true;	
+		}else{
+			data.ownMsg = false;
+		}
+		if(data.roomCode == $rootScope.roomCode){
+			if(data.roomCode != $rootScope.roomCode){
+				return;
+			}
+			
+			SumaMensaje();
+			var esta = false;
+			for(var i = 0; i < $scope.memes.length; i++){
+				if($scope.memes[i].url == data.msg){
+					esta = true;
+					break;
+				}
+			}
+			if(!esta && data.msg != ''){
+				$scope.memes.push({url: data.msg});
+			}
+		}
+		ScrolltoBottom();
+	});
+
+	$socket.on("disconnect", function(data){
+		alert("El servidor ha sido desconectado, favor de iniciar sesión nuevamente.");
+		//$location.path('/v1/');
+		$window.location.href = '/';
+		console.log("socket desconectado.");
+	});
+	
+	$socket.on("remove meme", function(data){
+		if(data.username == $rootScope.username){
+			data.ownMsg = true;	
+		}else{
+			data.ownMsg = false;
+		}
+		if(data.roomCode == $rootScope.roomCode){
+			if(data.roomCode != $rootScope.roomCode){
+				return;
+			}
+			
+			var esta = false;
+			var posicion = -1;
+			for(var i = 0; i < $scope.memes.length; i++){
+				if($scope.memes[i].url == data.msg){
+					esta = true;
+					posicion = i;
+					break;
+				}
+			}
+			if(esta && data.msg != ''){
+				$scope.memes.splice(posicion, 1);
+			}
+		}
+	});
+
 
 // ================================== Online Members List ===============================
+
+	$("#inputText").on("change keyup paste", function(){
+		if($('#inputText').val() != "" && $('#inputText').val() != undefined){
+			console.log($rootScope.username + " esta escribiendo...");
+			$socket.emit("user-writting",{ username : $rootScope.username}, function(data){
+				//delivery report code goes here
+				/*if (data.success == true) {
+					$scope.chatMsg = "";
+					$scope.setFocus = true;				
+				}*/
+			});
+		}
+    	else{
+			console.log($rootScope.username + " dejo de escribir.");
+			$socket.emit("user-stop-writting",{ username : $rootScope.username}, function(data){
+				//delivery report code goes here
+				/*if (data.success == true) {
+					$scope.chatMsg = "";
+					$scope.setFocus = true;				
+				}*/
+			});
+		}
+	});
 	$socket.emit('get-online-members',function(data){
+		console.log("get online members");
 	});
 	$socket.on("online-members", function(data){			
+			console.log("getting online members...");
 			$scope.users = data;
+			//console.log(data);
+			
+			var logedUsers = data.filter(data => data.roomCode == $rootScope.roomCode);
+			
+			if($scope.usersRoom && $scope.usersRoom.length < logedUsers.length){
+				for(var i = 0; i < logedUsers.length; i++){
+					var esta = false;
+					var nombre = logedUsers[i].username;
+					if($scope.usersRoom){
+						for(var j = 0; j < $scope.usersRoom.length; j++){
+							if(logedUsers[i].username == $scope.usersRoom[j].username){
+								esta = true;
+								continue;
+							}
+						}
+					}
+					if(!esta && $rootScope.username != nombre){
+						var dateString = formatAMPM(new Date());
+						var data = {
+							esin: true,
+							userLogin: true,
+							username: nombre,
+							msg: " has joined to this room. ",
+							msgTime: dateString
+						};
+						$scope.messeges.push(data);
+						SumaMensaje();
+						ScrolltoBottom();
+					}
+				}
+			}
+			if($scope.usersRoom && $scope.usersRoom.length > logedUsers.length){
+				for(var i = 0; i < $scope.usersRoom.length; i++){
+					var esta = false;
+					var nombre = $scope.usersRoom[i].username;
+					if($scope.usersRoom){
+						for(var j = 0; j < logedUsers.length; j++){
+							if(logedUsers[j].username == $scope.usersRoom[i].username){
+								esta = true;
+								continue;
+							}
+						}
+					}
+					if(!esta && $rootScope.username != nombre){
+						var dateString = formatAMPM(new Date());
+						var data = {
+							esin: false,
+							userLogin: true,
+							username: nombre,
+							msg: " has left this room. ",
+							msgTime: dateString
+						};
+						$scope.messeges.push(data);
+						SumaMensaje();
+						ScrolltoBottom();
+					}
+				}
+			}
+						
+			$scope.usersRoom = logedUsers;
+			
 	});
 
 // ================================== Common Functions ==================================    
@@ -107,15 +370,25 @@ angular.module('Controllers')
         	}
         }        
     };   
-
-// ====================================== Messege Sending Code ============================
-	// sending text message function
-	$scope.sendMsg = function(){
+	/*
+	$( "#inputText" ).focusin(function() {
+		$("#divBox").scrollTop($("#divBox")[0].scrollHeight);
+	});*/
+// ====================================== Code Sending Code ============================
+$scope.sendCode = function(){
 		if ($scope.chatMsg) {
 			$scope.isFileSelected = false;
 			$scope.isMsg = true;
 			var dateString = formatAMPM(new Date());
-			$socket.emit("send-message",{ username : $rootScope.username, userAvatar : $rootScope.userAvatar, msg : $scope.chatMsg, hasMsg : $scope.isMsg , hasFile : $scope.isFileSelected , msgTime : dateString }, function(data){
+			
+			var IsImageMSG = false;
+			if ($scope.chatMsg.match(/\.(jpeg|jpg|gif|png)$/) != null){
+				IsImageMSG = true;
+			}
+			
+			
+			
+			$socket.emit("send-message",{ username : $rootScope.username, userAvatar : $rootScope.userAvatar, msg : $scope.chatMsg, isCode: true, isImageMSG: false, hasMsg : $scope.isMsg , hasFile : $scope.isFileSelected , msgTime : dateString, roomCode : $rootScope.roomCode }, function(data){
 				//delivery report code goes here
 				if (data.success == true) {
 					$scope.chatMsg = "";
@@ -127,14 +400,51 @@ angular.module('Controllers')
 		}		
 	}
 
+// ====================================== Messege Sending Code ============================
+	// sending text message function
+	$scope.sendMsg = function(){
+		if ($scope.chatMsg) {
+			$scope.isFileSelected = false;
+			$scope.isMsg = true;
+			var dateString = formatAMPM(new Date());
+			
+			var IsImageMSG = false;
+			if ($scope.chatMsg.match(/\.(jpeg|jpg|gif|png)$/) != null){
+				IsImageMSG = true;
+			}
+			
+			
+			
+			$socket.emit("send-message",{ username : $rootScope.username, userAvatar : $rootScope.userAvatar, msg : $scope.chatMsg, isImageMSG: IsImageMSG, hasMsg : $scope.isMsg , hasFile : $scope.isFileSelected , msgTime : dateString, roomCode : $rootScope.roomCode }, function(data){
+				//delivery report code goes here
+				if (data.success == true) {
+					$scope.chatMsg = "";
+					$scope.setFocus = true;	
+					ScrolltoBottom();				
+				}
+			});
+		}else{
+			$scope.isMsgBoxEmpty = true;
+		}		
+	}
+
 	// recieving new text message
 	$socket.on("new message", function(data){
+		console.log("-------------------------------------");
+		console.log(data);
 		if(data.username == $rootScope.username){
 			data.ownMsg = true;	
 		}else{
 			data.ownMsg = false;
 		}
-		$scope.messeges.push(data);
+		if(data.roomCode == $rootScope.roomCode){
+			$scope.messeges.push(data);	
+			if(!data.ownMsg){
+				SumaMensaje();
+				ScrolltoBottom();
+				beep();
+			}
+		}
 	});
 
 // ====================================== Image Sending Code ==============================
@@ -145,7 +455,11 @@ angular.module('Controllers')
     //  opens the sent image on gallery_icon click
     $scope.openClickImage = function(msg){
 		if(!msg.ownMsg){
-		$http.post($rootScope.baseUrl + "/v1/getfile",msg).success(function (response){
+		$http.post($rootScope.baseUrl + "/v1/getfile",msg, 
+						{
+							headers: { 'Content-Type': undefined, 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'POST, PUT, OPTIONS' 
+							}
+							}).success(function (response){
 	    	if(!response.isExpired){
 	    		msg.showme = false;
 	    		msg.serverfilename = msg.serverfilename;
@@ -164,6 +478,8 @@ angular.module('Controllers')
     
     // recieving new image message
     $socket.on("new message image", function(data){
+		//console.log("entro a imagen");
+		//console.log(data);
 		$scope.showme = true;
 		if(data.username == $rootScope.username){
 			data.ownMsg = true;	
@@ -171,11 +487,16 @@ angular.module('Controllers')
 		}else{
 			data.ownMsg = false;
 		}
-		if((data.username == $rootScope.username) && data.repeatMsg){
-			checkMessegesImage(data);
-		}else{
-			$scope.messeges.push(data);
+		if(data.roomCode == $rootScope.roomCode || data.ownMsg){
+			
+			if((data.username == $rootScope.username) && data.repeatMsg){
+				SumaMensaje();
+				checkMessegesImage(data);
+			}else{
+				$scope.messeges.push(data);
+			}
 		}
+		ScrolltoBottom();
 	});
 
 	// replacing spinning wheel in sender message after image message delivered to everyone.
@@ -253,6 +574,7 @@ angular.module('Controllers')
                 var DWid = $rootScope.username + "dwid" + Date.now();
                 var image = {
 			      		username : $rootScope.username, 
+						roomCode : $rootScope.roomCode, 
 			      		userAvatar : $rootScope.userAvatar, 
 			      		hasFile : $scope.isFileSelected , 
 			      		isImageFile : true, 
@@ -264,10 +586,13 @@ angular.module('Controllers')
 			    };
                 $socket.emit('send-message',image,function (data){       // sending new image message via socket    
                 });
+				
+				
                 var fd = new FormData();
     			fd.append('file', file);
         		fd.append('username', $rootScope.username);
         		fd.append('userAvatar', $rootScope.userAvatar);
+				fd.append('roomCode', $rootScope.roomCode);
         		fd.append('hasFile', $scope.isFileSelected);
         		fd.append('isImageFile', true);
 				fd.append('istype', "image");        		
@@ -277,8 +602,9 @@ angular.module('Controllers')
 				fd.append('msgTime', dateString);
 				fd.append('filename', file.name);
 				$http.post($rootScope.baseUrl +"/v1/uploadImage", fd, {
+				//$http.post("/v1/uploadImage", fd, {
 		            transformRequest: angular.identity,
-		            headers: { 'Content-Type': undefined }
+		            headers: { 'Content-Type': undefined, 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'POST, PUT, OPTIONS' }
 		        }).then(function (response) {
 		        });
 
@@ -316,11 +642,16 @@ angular.module('Controllers')
 		}else{
 			data.ownMsg = false;
 		}
-		if((data.username == $rootScope.username) && data.repeatMsg){	
-			checkMessegesMusic(data);
-		}else{
-			$scope.messeges.push(data);
+		if(data.roomCode == $rootScope.roomCode || data.ownMsg){
+			
+			if((data.username == $rootScope.username) && data.repeatMsg){	
+			SumaMensaje();
+				checkMessegesMusic(data);
+			}else{
+				$scope.messeges.push(data);
+			}
 		}
+		ScrolltoBottom();
 	});
 
 	// replacing spinning wheel in sender message after music message delivered to everyone.
@@ -398,6 +729,7 @@ angular.module('Controllers')
                 var audio = {
                 		username : $rootScope.username, 
 			      		userAvatar : $rootScope.userAvatar, 
+						roomCode : $rootScope.roomCode, 
 			      		hasFile : $scope.isFileSelected ,
 			      		isMusicFile : true,
                 		istype : "music",
@@ -413,6 +745,7 @@ angular.module('Controllers')
     			fd.append('file', file);
         		fd.append('username', $rootScope.username);
         		fd.append('userAvatar', $rootScope.userAvatar);
+				fd.append('roomCode', $rootScope.roomCode);
         		fd.append('hasFile', $scope.isFileSelected);
         		fd.append('isMusicFile', true);
 				fd.append('istype', "music");        		
@@ -461,11 +794,14 @@ angular.module('Controllers')
 		}else{
 			data.ownMsg = false;
 		}
-		if((data.username == $rootScope.username) && data.repeatMsg){	
-			checkMessegesPDF(data);
-		}else{
-			$scope.messeges.push(data);
+		if(data.roomCode == $rootScope.roomCode || data.ownMsg){
+			if((data.username == $rootScope.username) && data.repeatMsg){	
+				checkMessegesPDF(data);
+			}else{
+				$scope.messeges.push(data);
+			}
 		}
+		ScrolltoBottom();
 	});
 
 	// replacing spinning wheel in sender message after document message delivered to everyone.
@@ -541,6 +877,7 @@ angular.module('Controllers')
                 var dateString = formatAMPM(new Date());
                 var DWid = $rootScope.username + "dwid" + Date.now();
                 var PDF = {
+						roomCode : $rootScope.roomCode, 
                 		username : $rootScope.username, 
 			      		userAvatar : $rootScope.userAvatar, 
 			      		hasFile : $scope.isFileSelected ,
@@ -557,6 +894,7 @@ angular.module('Controllers')
     			fd.append('file', file);
         		fd.append('username', $rootScope.username);
         		fd.append('userAvatar', $rootScope.userAvatar);
+				fd.append('roomCode', $rootScope.roomCode);
         		fd.append('hasFile', $scope.isFileSelected);
         		fd.append('isPDFFile', true);
 				fd.append('istype', "PDF");        		
@@ -574,6 +912,7 @@ angular.module('Controllers')
             }
         }
     };
+	
 
 //==================================== Any File Upload ============================
     $scope.$watch('Files', function () {
@@ -585,6 +924,8 @@ angular.module('Controllers')
         }else if(filetype == "image"){
         	$scope.sendImage($scope.Files);
         }else if(filetype == "invalid format"){
+			$scope.sendPDF($scope.Files);
+			/*
         	var html = '<p id="alert">Invalid file format.</p>';
         	if ($( ".chat-box" ).has( "p" ).length < 1) {
 				$(html).hide().prependTo(".chat-box").fadeIn(1500);
@@ -592,6 +933,7 @@ angular.module('Controllers')
 					$('#alert').remove();
 				});
 			}
+			*/
         }    
     });
 

@@ -10,6 +10,9 @@ var ios = io.listen(server);				// listening sockets
 var formidable = require('formidable');		// file upload module
 var util = require('util');
 
+var path = require('path');
+
+
 // Initializing Variables
 var nickname = [];
 var i = [];
@@ -43,6 +46,8 @@ app.use(express.static(__dirname + '/public/app/upload/images'));
 app.use(express.static(__dirname + '/public/app/upload/music'));
 app.use(express.static(__dirname + '/public/app/upload/doc'));
 
+var url_server = "http://10.44.43.174:8282";
+
 // CORS Issue Fix
 app.use(function(req, res, next) {														
   res.header("Access-Control-Allow-Origin", "*");
@@ -62,7 +67,99 @@ ios.on('connection', function(socket){
 				callback({success:true});
 				socket.username = data.username;
 				socket.userAvatar = data.userAvatar;
+				socket.roomCode = data.roomCode;
+				socket.isWritting = false;
+				socket.activo = true;
 				nickname[data.username] = socket;
+			}
+	});
+
+	socket.on('user-activo', function(data, callback){
+		//console.log("escribiendo:"+data);
+		if(!nickname[data.username])
+			{
+				callback({success:false});
+			}else{
+				var online_member = [];
+				callback({success:true});
+				i = Object.keys(nickname);
+				for(var j=0;j<i.length;j++ )
+				{
+					socket_id = i[j];
+					socket_data = nickname[socket_id];
+					if(data.username == socket_data.username)
+						socket_data.activo = true;
+					temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar, "roomCode":socket_data.roomCode, "isWritting": socket_data.isWritting, "activo": socket_data.activo};
+					online_member.push(temp1);
+				}
+				ios.sockets.emit('online-members', online_member);
+			}
+	});
+
+	socket.on('user-inactivo', function(data, callback){
+		//console.log("escribiendo:"+data);
+		if(!nickname[data.username])
+			{
+				callback({success:false});
+			}else{
+				var online_member = [];
+				callback({success:true});
+				i = Object.keys(nickname);
+				for(var j=0;j<i.length;j++ )
+				{
+					socket_id = i[j];
+					socket_data = nickname[socket_id];
+					if(data.username == socket_data.username)
+						socket_data.activo = false;
+					temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar, "roomCode":socket_data.roomCode, "isWritting": socket_data.isWritting, "activo": socket_data.activo};
+					online_member.push(temp1);
+				}
+				ios.sockets.emit('online-members', online_member);
+			}
+	});
+
+	socket.on('user-writting', function(data, callback){
+		//console.log("escribiendo:"+data);
+		if(!nickname[data.username])
+			{
+				callback({success:false});
+			}else{
+				var online_member = [];
+				callback({success:true});
+				i = Object.keys(nickname);
+				for(var j=0;j<i.length;j++ )
+				{
+					socket_id = i[j];
+					socket_data = nickname[socket_id];
+					if(data.username == socket_data.username)
+						socket_data.isWritting = true;
+					temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar, "roomCode":socket_data.roomCode, "isWritting": socket_data.isWritting, "activo": socket_data.activo};
+					online_member.push(temp1);
+				}
+				ios.sockets.emit('online-members', online_member);
+			}
+	});
+
+
+	socket.on('user-stop-writting', function(data, callback){
+		//console.log("no escribiendo:"+data);
+		if(!nickname[data.username])
+			{
+				callback({success:false});
+			}else{
+				var online_member = [];
+				callback({success:true});
+				i = Object.keys(nickname);
+				for(var j=0;j<i.length;j++ )
+				{
+					socket_id = i[j];
+					socket_data = nickname[socket_id];
+					if(data.username == socket_data.username)
+						socket_data.isWritting = false;
+					temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar, "roomCode":socket_data.roomCode, "isWritting": socket_data.isWritting, "activo": socket_data.activo};
+					online_member.push(temp1);
+				}
+				ios.sockets.emit('online-members', online_member);
 			}
 	});
 
@@ -74,7 +171,7 @@ ios.on('connection', function(socket){
 		{
 			socket_id = i[j];
 			socket_data = nickname[socket_id];
-			temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar};
+			temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar, "roomCode":socket_data.roomCode, "isWritting": socket_data.isWritting, "activo": socket_data.activo};
 			online_member.push(temp1);
 		}
 		ios.sockets.emit('online-members', online_member);		
@@ -84,6 +181,7 @@ ios.on('connection', function(socket){
 	socket.on('send-message', function(data, callback){
 		if (nickname[data.username]) {
 			if(data.hasMsg){
+				console.log(data.username+"["+data.roomCode+"]: "+ data.msg);
 				ios.sockets.emit('new message', data);
 				callback({success:true});	
 			}else if(data.hasFile){
@@ -102,6 +200,18 @@ ios.on('connection', function(socket){
 			}
 		}		
 	});
+	socket.on('remove-meme', function(data, callback){
+		if (nickname[data.username]) {
+				ios.sockets.emit('remove meme', data);
+				callback({success:true});
+		}		
+	});
+	socket.on('send-meme', function(data, callback){
+		if (nickname[data.username]) {
+				ios.sockets.emit('new meme', data);
+				callback({success:true});
+		}		
+	});
 	
 	// disconnect user handling 
 	socket.on('disconnect', function () {	
@@ -112,7 +222,7 @@ ios.on('connection', function(socket){
     	{
         	socket_id = x[k];
         	socket_data = nickname[socket_id];
-        	temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar};
+        	temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar, "roomCode":socket_data.roomCode};
             online_member.push(temp1);
     	}
 		ios.sockets.emit('online-members', online_member);            	
@@ -135,6 +245,7 @@ app.post('/v1/uploadImage',function (req, res){
 		var data = { 
 				username : fields.username, 
 				userAvatar : fields.userAvatar, 
+				roomCode: fields.roomCode,
 				repeatMsg : true, 
 				hasFile : fields.hasFile, 
 				isImageFile : fields.isImageFile, 
@@ -147,9 +258,12 @@ app.post('/v1/uploadImage',function (req, res){
 				filename : files.file.name,
 				size : bytesToSize(files.file.size)
 		};
+		data.serverfilename = url_server + '/' +path.parse(data.serverfilename).base;
+		//console.log(data);
 	    var image_file = { 
 		        dwid : fields.dwid,
 		        filename : files.file.name,
+				roomCode: fields.roomCode,
 		        filetype : fields.istype,
 		        serverfilename : baseName(files.file.path),
 		        serverfilepath : files.file.path,
@@ -179,6 +293,7 @@ app.post('/v1/uploadAudio',function (req, res){
 		var data = { 
 				username : fields.username, 
 				userAvatar : fields.userAvatar, 
+				roomCode: fields.roomCode,
 				repeatMsg : true, 
 				hasFile : fields.hasFile, 
 				isMusicFile : fields.isMusicFile, 
@@ -191,9 +306,11 @@ app.post('/v1/uploadAudio',function (req, res){
 				filename : files.file.name,
 				size : bytesToSize(files.file.size)
 		};
+		data.serverfilename = url_server + '/' +path.parse(data.serverfilename).base;
 	    var audio_file = { 
 		        dwid : fields.dwid,
 		        filename : files.file.name,
+				roomCode: fields.roomCode,
 		        filetype : fields.istype,
 		        serverfilename : baseName(files.file.path),
 		        serverfilepath : files.file.path,
@@ -207,6 +324,7 @@ app.post('/v1/uploadAudio',function (req, res){
 // route for uploading document asynchronously
 app.post('/v1/uploadPDF',function (req, res){
 	var imgdatetimenow = Date.now();
+	
 	var form = new formidable.IncomingForm({
       	uploadDir: __dirname + '/public/app/upload/doc',
       	keepExtensions: true
@@ -219,6 +337,7 @@ app.post('/v1/uploadPDF',function (req, res){
 		var data = { 
 				username : fields.username, 
 				userAvatar : fields.userAvatar, 
+				roomCode: fields.roomCode,
 				repeatMsg : true, 
 				hasFile : fields.hasFile, 
 				isPDFFile : fields.isPDFFile, 
@@ -231,9 +350,11 @@ app.post('/v1/uploadPDF',function (req, res){
 				filename : files.file.name,
 				size : bytesToSize(files.file.size)
 		};
+		data.serverfilename = url_server + '/' +path.parse(data.serverfilename).base;
 	    var pdf_file = { 
 		        dwid : fields.dwid,
 		        filename : files.file.name,
+				roomCode: fields.roomCode,
 		        filetype : fields.istype,
 		        serverfilename : baseName(files.file.path),
 		        serverfilepath : files.file.path,
@@ -253,7 +374,7 @@ app.post('/v1/getfile', function(req, res){
     
     for(var i = 0; i<files_array.length; i++)
     {
-        if(files_array[i].dwid == data)
+        if(files_array[i].dwid == data && files_array[i].roomCode == req.body.roomCode)
         {
             dwidexist = true;
             req_file_data = files_array[i];

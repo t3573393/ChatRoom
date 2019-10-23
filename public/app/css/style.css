@@ -31,6 +31,9 @@ html,body{height:100%;}
 .login-box-body .form-control-feedback.errText{
 	color: #dd4b39;
 }
+.margin-avatar{
+	margin : 20px;
+}
 /* ============================= chatRoom Page ==========================*/
 .multiple-borders-white {
   border: 4px solid rgba(255,255,255,0.5);
@@ -164,6 +167,50 @@ html,body{height:100%;}
 	color : #333; 
 	float : right;
 }
+.margin-title-room{
+	margin-left : 20px;
+}
+.user-in{
+	background: lightgreen;
+    border-radius: 5px;
+}
+.user-out{
+	background: #ff6767;
+    border-radius: 5px;
+}
+.container-meme {
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+	padding: 5px;
+}
+.box-body{
+	height: 60vh !important;
+	padding-left: 20px !important;
+    padding-right: 20px !important;
+	padding-top: 20px !important;
+}
+.code-box{
+	text-align: left;
+}
+.remove-meme-btn{
+	background: #e34c4c;
+}
+.repeat-meme{
+	padding: 7px;
+    background: #d9dee0;
+    margin-right: 5px;
+}
+#cajaUsuarios{
+	height: 71vh !important;
+}
+#estaEscribiendo{
+	color: gray;
+}
+#userNameContact{
+	font-weight : 600; 
+	color : #333;
+}
 /*============================ Sreen size 768px ============================*/
 @media screen and (max-width: 767px) {
 .login-box-body{
@@ -207,3 +254,16 @@ html,body{height:100%;}
 	display: none;
 }
 }
+/*============================ changing colors ============================*/
+/*
+.direct-chat-text{
+	background: #1294f3 !important;
+	border-color: #1294f3 !important;
+}
+.direct-chat-warning .right > .direct-chat-text::before{
+	border-left-color: #1294f3 !important;
+}
+.box.box-warning {
+    border-top-color: #1294f3 !important;
+}
+*/

@@ -1,9 +1,9 @@
-var App = angular.module('ChatRoom',['ngResource','ngRoute','ngStorage','socket.io','ngFileUpload','Controllers','Services'])
+var App = angular.module('ChatRoom',['ngResource','ngRoute','ngStorage','socket.io','ngFileUpload','Controllers','Services', 'ngImageCompress'])
 .run(["$rootScope", function ($rootScope){
-	$rootScope.baseUrl = 'http://chat.systenics.com'; //Application URL
+	$rootScope.baseUrl = 'http://172.20.10.3:8282'; //Application URL
 }]);
 App.config(function ($routeProvider, $socketProvider){
-	$socketProvider.setConnectionUrl('http://chat.systenics.com'); // Socket URL
+	$socketProvider.setConnectionUrl('http://172.20.10.3:8282'); // Socket URL
 
 	$routeProvider	// AngularJS Routes
 	.when('/v1/', {

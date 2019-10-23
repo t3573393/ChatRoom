@@ -12,12 +12,27 @@
 	        <span ng-hide="isErrorNick"class="glyphicon glyphicon-user form-control-feedback"></span>
 	        <span ng-hide="!isErrorNick" class="glyphicon glyphicon-remove form-control-feedback errText"></span>
 	    </div>
+		<div ng-class="{'form-group':true, 'has-feedback':true, 'has-error':isErrorReq2}">	      	
+	        <input type="text" class="form-control" placeholder="room code" ng-model="roomCode" ng-change="isErrorReq2=isErrorCode=false"/>
+	        <span ng-hide="isErrorCode"class="glyphicon glyphicon-lock form-control-feedback"></span>
+	        <span ng-hide="!isErrorCode" class="glyphicon glyphicon-remove form-control-feedback errText"></span>
+	    </div>
 	    <div class="form-group has-feedback">
 	      	<div class="col-sm-12">
 	      		<p class="login-box-msg">Choose your Avatar</p>
 	      	</div>
 	        
 	    </div>
+		<div class= "margin-avatar text-center">
+				<img class="avatar-thumb" src="{{userAvatar}}">
+				<div layout-gt-xs="row">
+					<input on-select-image='updateImageArray' class="ng-hide" id="input-file-id" type="file" accept="image/*" ng-model="imageList2" image="imageList2" resize-max-height="150" resize-max-width="150" resize-quality="0.3" resize-type="image/jpg" ng-image-compress/>
+					<label class="btn btn-warning" for="input-file-id">Search</label>
+					
+				</div>
+				
+		</div>
+		<!--
 	 	<div class="form-group has-feedback">
 	 		<div class="avatar-thumb">
 	 			<img src="app/css/dist/img/Avatar1.jpg" ng-class="{'avatar-selected': userAvatar==='Avatar1.jpg', 'avatar':true}" id="Avatar1" ng-click="changeAvatar('Avatar1.jpg')"/>
@@ -51,6 +66,7 @@
 	          <button type="submit" class="btn btn-primary btn-block btn-flat" ng-click="redirect()">Start</button>
 	        </div><!-- /.col -->
     	</div><!-- /.row -->
+		
       </div><!-- /.login-box-body -->
     </form><!-- / form -->
   </div><!-- /.login-box-body -->

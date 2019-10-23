@@ -1,5 +1,5 @@
 <!-- Full Width Column -->
-<div class="content-wrapper" style="overflow:hidden;height:100%">
+<div class="content-wrapper" style="overflow:hidden;height:80%">
   <div class="container">
     <!-- Main content -->
     <section class="content">                          
@@ -7,7 +7,7 @@
             <div class="col-sm-9">
               <div class="box box-warning direct-chat direct-chat-warning">
               <div class="box-header with-border">
-                <h3 class="box-title">Chat Room</h3>
+                <h3 class="box-title">Chat Room: {{roomCode}}</h3>
                 <div class="box-tools pull-right">
                   <!-- Any File Select Button -->
                   <button class="btn btn-box-tool mobile" data-widget="" ngf-select ng-model="Files"><i class="glyphicon glyphicon-paperclip"></i></button>
@@ -15,18 +15,33 @@
                   <button class="btn btn-box-tool mobile toggle-contact-icon" data-toggle="tooltip" data-widget="chat-pane-toggle" title="Contacts" ng-click="toggleCustom()"><i class="fa fa-comments"></i></button>
                 </div>
               </div><!-- /.box-header -->
-              <div class="box-body">
+              <div id="divBox"  class="box-body" > <!-- schroll-bottom="messeges">-->
                 <!-- Conversations are loaded here -->
-                <div class="direct-chat-messages" schroll-bottom="messeges">
+                <div  > <!--  schroll-bottom="messeges">-->
                   <!-- Message. Default to the left -->
                   <div ng-repeat="messege in messeges" ng-class="{'direct-chat-msg' : true, 'right' : messege.ownMsg, 'wordwrap' : true}" >
-                    <div class='direct-chat-info clearfix'>
+					
+					
+					<div ng-class="[{'user-in' : messege.esin}, {'user-out' : !messege.esin}, 'text-center']" ng-show="messege.userLogin">
+						<span><b>{{ messege.username }}</b></span>
+						<span>{{ messege.msg }}</span>
+						<span>{{ messege.msgTime }}</span>
+					</div>
+					
+					
+					
+					
+                    <div ng-hide="messege.userLogin" class='direct-chat-info clearfix'>
                       <span class='direct-chat-name pull-left'>{{ messege.username }}</span>
                       <span class='direct-chat-timestamp pull-right'>{{ messege.msgTime }}</span>
                     </div><!-- /.direct-chat-info -->
-                    <img class="direct-chat-img" ng-src="app/css/dist/img/{{messege.userAvatar}}" alt="message user image" /><!-- /.direct-chat-img -->
-                    <div ng-class="{'direct-chat-text' : true, 'text-right' : messege.ownMsg}">
-                      <div ng-hide="hasFile">{{ messege.msg }}</div>
+                    <img ng-hide="messege.userLogin" class="direct-chat-img" ng-src="{{messege.userAvatar}}" alt="message user image" /><!-- /.direct-chat-img -->
+                    <div ng-hide="messege.userLogin" ng-class="{'direct-chat-text' : true, 'text-right' : messege.ownMsg}">
+                      <div ng-hide="hasFile">
+						<div ng-show="messege.isImageMSG"><img src="{{ messege.msg }}" alt="{{ messege.msg }}" style='width:100%;'></div>
+						<div ng-show="messege.isMeme"><img src="{{ messege.msg }}" alt="{{ messege.msg }}" style='width:20%;'></div>
+						<div ng-show="!messege.isMeme">{{ messege.msg }}</div>
+					  </div>
                       <!-- {{ messege.sendfile }} Media File Messeges -->
                       <div class="item" ng-show="messege.hasFile">
                           <div class="attachment clearfix">
@@ -35,7 +50,7 @@
                               <div>
                                 <div ng-class="{'attachment-icon-right' : messege.ownMsg, 'attachment-icon-left' : !messege.ownMsg}">
                                   <a href ng-click="openClickImage(messege)" ng-show="messege.showme" >
-                              <img id="{{messege.dwid}}" width="50" height="50" ng-src="{{messege.dwimgsrc}}" alt="Open Image"></a> <!-- Open Icon -->
+                              <img id="{{messege.dwid}}" width="50" height="50" ng-src="{{messege.serverfilename}}" alt="Open Image"></a> <!-- Open Icon -->
                               
                               <a ng-href="{{messege.serverfilename}}" data-lightbox="{{messege.dwid}}" data-title="{{messege.filename}}" ng-hide="messege.showme">
                                 <img ng-class="{'multiple-borders-white' : messege.ownMsg,'multiple-borders-black' : !messege.ownMsg}" id="{{messege.dwid+1}}" width="90" height="70" ng-src="{{messege.serverfilename}}" alt="Image File"> <!-- Image -->
@@ -106,7 +121,7 @@
                       <ul class='contacts-list'>
                         <li ng-repeat="user in users">
                           <a href>
-                            <img class='contacts-list-img' ng-src='app/css/dist/img/{{user.userAvatar}}'/>
+                            <img class='contacts-list-img' ng-src='{{user.userAvatar}}'/>
                             <div class='contacts-list-info'>
                                 <span class="ol-memeber-name" style="line-height:2.6; padding:5px; font-weight : 600; color : #333;">{{ user.username }}</span>
                             </div><!-- /.contacts-list-info -->
@@ -120,6 +135,20 @@
                 <div class="chat-box"></div>
               </div><!-- /.box-body -->
               <div class="box-footer">
+			  
+				<div class="container-meme" >
+					<span ng-repeat="meme in memes" class="repeat-meme" >
+						<!--<button class= "remove-meme-btn badge badge-dange" ng-click="removeMeme(meme.url)">x</button>
+						<button ng-click="enviarMEME(meme.url)">
+							<img src="{{meme.url}}" alt="{{meme.url}}" width="50px" height="50px" >
+						</button>-->
+						<button type="button"  ng-click="enviarMEME(meme.url)">
+						  <img src="{{meme.url}}" alt="{{meme.url}}" width="50px" height="50px" > 
+						  <button class="badge badge-danger remove-meme-btn" ng-click="removeMeme(meme.url)">x</button>
+						</button>
+					</span>
+				</div>
+				
                 <div class="box-tools pull-right desktop">
                   <!-- Any File Select Button -->
                   <button class="btn btn-warning btn-flat" data-widget="" ngf-select ng-model="Files"><i class="glyphicon glyphicon-paperclip"></i></button>
@@ -127,12 +156,15 @@
                 <!-- Text message  -->
                 <form action="" method="post">
                   <div class="input-group">
-                    <input type="text" name="message" placeholder="Type Message ..." ng-class="{'form-control': true, 'has-error':isMsgBoxEmpty}" ng-model="chatMsg" ng-change="isMsgBoxEmpty=false" ng-enter="sendMsg()" ng-focus="setFocus" focus-me="setFocus"/>
-                    <span class="input-group-btn">
-                      <button type="button" class="btn btn-warning btn-flat" ng-click="sendMsg()">Send</button>
+                    <input id="inputText" type="text" name="message" placeholder="Type Message ..." ng-class="{'form-control': true, 'has-error':isMsgBoxEmpty}" ng-model="chatMsg" ng-change="isMsgBoxEmpty=false" ng-enter="sendMsg()" ng-focus="setFocus" focus-me="setFocus"/>
+                   
+					<span class="input-group-btn">
+						<button type="button" class="btn btn-warning btn-flat" style="margin-left: 4px; margin-right: 4px;" ng-click="sendMeme()">MEME</button>
+						<button type="button" class="btn btn-warning btn-flat" ng-click="sendMsg()">Send</button>
                     </span>
                   </div>
                 </form>
+				 
               </div><!-- /.box-footer-->
               </div><!-- /.box -->
             </div>
@@ -142,20 +174,40 @@
               <div class="box-header with-border">
                 <h3 class="box-title">Online Members</h3>
               </div><!-- /.box-header -->
-              <div class="box-body">
+              <div id="cajaUsuarios" class="box-body">
                 <!-- Contacts are loaded here -->
                 <div class="direct-chat-messages ol-members">
                   <ul class='contacts-list'>
-                    <li ng-repeat="user in users">
+                    <li ng-repeat="user in usersRoom">
                       <a href>
-                        <img class='contacts-list-img' ng-src='app/css/dist/img/{{user.userAvatar}}'/>
+                        <img class='contacts-list-img' ng-src='{{user.userAvatar}}'/>
                         <div class='contacts-list-info'>
-                            <span class="ol-memeber-name" style="line-height:2.6; padding:5px; font-weight : 600; color : #333;">{{ user.username }}</span>
+                            <div id="userNameContact" class="ol-memeber-name" >{{ user.username }}
+                              <span ng-if="user.activo">(Activo)</span>
+                              <span ng-if="!user.activo">(Inactivo)</span>
+                            </div>
+                            <div ng-if="user.isWritting" id="estaEscribiendo" >Esta escribiendo...</div>
                         </div><!-- /.contacts-list-info -->
+                        
                       </a>
                     </li><!-- End Contact Item -->
                   </ul><!-- /.contatcts-list -->
-                </div><!--/.direct-chat-messages-->
+				  <!--
+				  <div class="box-header with-border">
+					<h4 class="margin-title-room box-title">Global</h4>
+				  </div>
+				  <ul class='contacts-list'>
+                    <li ng-repeat="user in users">
+                      <a href>
+                        <img class='contacts-list-img' ng-src='{{user.userAvatar}}'/>
+                        <div class='contacts-list-info'>
+                            <span class="ol-memeber-name" style="line-height:2.6; padding:5px; font-weight : 600; color : #333;">{{ user.username }}</span>
+                        </div>
+                      </a>
+                    </li>
+                  </ul>
+                </div>--><!--/.direct-chat-messages-->
+				
               </div><!-- /.box-body -->
             </div><!-- /.box -->
           </div>       

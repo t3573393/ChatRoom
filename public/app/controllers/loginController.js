@@ -19,6 +19,7 @@ angular.module('Controllers',[])
 	$scope.isErrorReq = false;
 	$scope.isErrorNick = false;
 	$scope.username = "";
+	$scope.userAvatar = "app/css/dist/img/user.jpg";
 
 	// redirection if user logged in.
 	if($rootScope.loggedIn){
@@ -29,10 +30,11 @@ angular.module('Controllers',[])
 	$scope.redirect = function(){
 		if ($scope.username.length <= 20) {
 			if($scope.username){
-				$socket.emit('new user',{username : $scope.username, userAvatar : $scope.userAvatar},function(data){
+				$socket.emit('new user',{username : $scope.username, userAvatar : $scope.userAvatar, roomCode: $scope.roomCode},function(data){
 					if(data.success == true){	// if nickname doesn't exists	
 						$rootScope.username = $scope.username;
 						$rootScope.userAvatar = $scope.userAvatar;
+						$rootScope.roomCode = $scope.roomCode;
 						$rootScope.loggedIn = true;
 						$location.path('/v1/ChatRoom');					
 					}else{		// if nickname exists
@@ -66,5 +68,8 @@ angular.module('Controllers',[])
 	}
 	$scope.changeAvatar = function(avatar){		// secting different avatar
 			$scope.userAvatar = avatar;
+	}
+	$scope.updateImageArray = function(image) { 
+      $scope.userAvatar = image.compressed.dataURL;
 	}
 })
