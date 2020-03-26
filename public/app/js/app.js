@@ -18,3 +18,14 @@ App.config(function ($routeProvider, $socketProvider){
         redirectTo: '/v1/'	// Default Route
     });
 });
+if(window.Notification && Notification.permission !== "denied") {
+	Notification.requestPermission(function (status){
+		if (status == "granted") {
+			var n = new Notification('notification OK!');
+
+			n.onshow = function () {
+				setTimeout(n.close.bind(n),5000);
+			}
+		}
+	});
+}

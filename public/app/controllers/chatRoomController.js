@@ -443,6 +443,16 @@ $scope.sendCode = function(){
 				SumaMensaje();
 				ScrolltoBottom();
 				beep();
+
+				if(window.Notification && Notification.permission == "granted") {
+					var n = new Notification('notification', {
+					   body : 'new message'
+					});
+
+					n.onshow = function () {
+						setTimeout(n.close.bind(n),5000);
+					}
+				}
 			}
 		}
 	});
@@ -494,6 +504,20 @@ $scope.sendCode = function(){
 				checkMessegesImage(data);
 			}else{
 				$scope.messeges.push(data);
+			}
+		}
+
+		if(data.roomCode == $rootScope.roomCode){
+			if(!data.ownMsg){
+				if(window.Notification && Notification.permission == "granted") {
+					var n = new Notification('notification', {
+					   body : 'new message image'
+					});
+
+					n.onshow = function () {
+						setTimeout(n.close.bind(n),5000);
+					}
+				}
 			}
 		}
 		ScrolltoBottom();
@@ -645,10 +669,23 @@ $scope.sendCode = function(){
 		if(data.roomCode == $rootScope.roomCode || data.ownMsg){
 			
 			if((data.username == $rootScope.username) && data.repeatMsg){	
-			SumaMensaje();
+				SumaMensaje();
 				checkMessegesMusic(data);
 			}else{
 				$scope.messeges.push(data);
+			}
+		}
+		if(data.roomCode == $rootScope.roomCode){
+			if(!data.ownMsg){
+				if(window.Notification && Notification.permission == "granted") {
+					var n = new Notification('notification', {
+					   body : 'new message music'
+					});
+
+					n.onshow = function () {
+						setTimeout(n.close.bind(n),5000);
+					}
+				}
 			}
 		}
 		ScrolltoBottom();
@@ -799,6 +836,19 @@ $scope.sendCode = function(){
 				checkMessegesPDF(data);
 			}else{
 				$scope.messeges.push(data);
+			}
+		}
+		if(data.roomCode == $rootScope.roomCode){
+			if(!data.ownMsg){
+				if(window.Notification && Notification.permission == "granted") {
+					var n = new Notification('notification', {
+					   body : 'new message PDF'
+					});
+
+					n.onshow = function () {
+						setTimeout(n.close.bind(n),5000);
+					}
+				}
 			}
 		}
 		ScrolltoBottom();
