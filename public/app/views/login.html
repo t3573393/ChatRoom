@@ -3,23 +3,23 @@
     <a href><b>Chat</b>.systenics<small>.com</small></a>
   </div><!-- /.login-logo -->
   <div class="login-box-body">
-    <h4 class="login-box-msg">Beyond Just Messaging...</h4>
+    <h4 class="login-box-msg">{{"Beyond-Just-Messaging"|translate}}...</h4>
     <form>
     	<div class="form-group errGroup">
     	</div>
 	    <div ng-class="{'form-group':true, 'has-feedback':true, 'has-error':isErrorReq}">	      	
-	        <input type="text" class="form-control" placeholder="nickname" ng-model="username" ng-change="isErrorReq=isErrorNick=false" focus-me="true"/>
+	        <input type="text" class="form-control" placeholder="{{'nickname'|translate}}" ng-model="username" ng-change="isErrorReq=isErrorNick=false" focus-me="true"/>
 	        <span ng-hide="isErrorNick"class="glyphicon glyphicon-user form-control-feedback"></span>
 	        <span ng-hide="!isErrorNick" class="glyphicon glyphicon-remove form-control-feedback errText"></span>
 	    </div>
 		<div ng-class="{'form-group':true, 'has-feedback':true, 'has-error':isErrorReq2}">	      	
-	        <input type="text" class="form-control" placeholder="room code" ng-model="roomCode" ng-change="isErrorReq2=isErrorCode=false"/>
+	        <input type="text" class="form-control" placeholder="{{'room-code'|translate}}" ng-model="roomCode" ng-change="isErrorReq2=isErrorCode=false"/>
 	        <span ng-hide="isErrorCode"class="glyphicon glyphicon-lock form-control-feedback"></span>
 	        <span ng-hide="!isErrorCode" class="glyphicon glyphicon-remove form-control-feedback errText"></span>
 	    </div>
 	    <div class="form-group has-feedback">
 	      	<div class="col-sm-12">
-	      		<p class="login-box-msg">Choose your Avatar</p>
+	      		<p class="login-box-msg">{{'Choose-your-Avatar'|translate}}</p>
 	      	</div>
 	        
 	    </div>
@@ -27,7 +27,7 @@
 				<img class="avatar-thumb" src="{{userAvatar}}">
 				<div layout-gt-xs="row">
 					<input on-select-image='updateImageArray' class="ng-hide" id="input-file-id" type="file" accept="image/*" ng-model="imageList2" image="imageList2" resize-max-height="150" resize-max-width="150" resize-quality="0.3" resize-type="image/jpg" ng-image-compress/>
-					<label class="btn btn-warning" for="input-file-id">Search</label>
+					<label class="btn btn-warning" for="input-file-id">{{'Search'|translate}}</label>
 					
 				</div>
 				
@@ -63,7 +63,7 @@
 
         <div class="row">
 	        <div class="col-xs-12">
-	          <button type="submit" class="btn btn-primary btn-block btn-flat" ng-click="redirect()">Start</button>
+	          <button type="submit" class="btn btn-primary btn-block btn-flat" ng-click="redirect()">{{'Start'|translate}}</button>
 	        </div><!-- /.col -->
     	</div><!-- /.row -->
 		

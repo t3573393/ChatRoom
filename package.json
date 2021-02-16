@@ -29,6 +29,7 @@
     "passport.socketio"
   ],
   "dependencies": {
+    "angular-translate": "^2.18.4",
     "body-parser": "^1.18.2",
     "cors": "^2.8.4",
     "express": "^3.2.6",

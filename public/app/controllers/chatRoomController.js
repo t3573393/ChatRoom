@@ -40,7 +40,7 @@ angular.module('Controllers')
         }
     };
 })
-.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService){		// Chat Page Controller
+.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService,$translate){		// Chat Page Controller
 	// Varialbles Initialization.
 	$scope.isMsgBoxEmpty = false;
 	$scope.isFileSelected = false;
@@ -199,7 +199,8 @@ angular.module('Controllers')
 	});
 
 	$socket.on("disconnect", function(data){
-		alert("El servidor ha sido desconectado, favor de iniciar sesión nuevamente.");
+		let msg = $translate.instant('The-server-has-been-disconnected-Please-log-in-again');
+		alert(msg);
 		//$location.path('/v1/');
 		$window.location.href = '/';
 		console.log("socket desconectado.");
@@ -279,12 +280,13 @@ angular.module('Controllers')
 						}
 					}
 					if(!esta && $rootScope.username != nombre){
+						let msg = $translate.instant('has-joined-to-this-room');
 						var dateString = formatAMPM(new Date());
 						var data = {
 							esin: true,
 							userLogin: true,
 							username: nombre,
-							msg: " has joined to this room. ",
+							msg: msg,
 							msgTime: dateString
 						};
 						$scope.messeges.push(data);
@@ -305,13 +307,14 @@ angular.module('Controllers')
 							}
 						}
 					}
-					if(!esta && $rootScope.username != nombre){
+					if(!esta && $rootScope.username != nombre){						
+						let msg = $translate.instant('has-left-this-room');
 						var dateString = formatAMPM(new Date());
 						var data = {
 							esin: false,
 							userLogin: true,
 							username: nombre,
-							msg: " has left this room. ",
+							msg: msg,
 							msgTime: dateString
 						};
 						$scope.messeges.push(data);
@@ -347,9 +350,14 @@ angular.module('Controllers')
         }
     // message time formatting into string    
 	function formatAMPM(date) {
+		var reqLanguage = navigator.language || navigator.userLanguage; 
+		console.log("reqLanguage:" + reqLanguage);
 		var hours = date.getHours();
 		var minutes = date.getMinutes();
 		var ampm = hours >= 12 ? 'pm' : 'am';
+		if(reqLanguage == "zh-CN") {
+			ampm = hours >= 12 ? '下午' : '上午';
+		} 
 		hours = hours % 12;
 		hours = hours ? hours : 12; // the hour '0' should be '12'
 		minutes = minutes < 10 ? '0'+minutes : minutes;

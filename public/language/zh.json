@@ -1,0 +1,22 @@
+{
+    "name": "听风",
+    "age": "27",
+    "Beyond-Just-Messaging":"超越消息传递",
+    "nickname":"昵称",
+    "room-code":"聊天室编号",
+    "Choose-your-Avatar":"选择你的头像",
+    "Search":"搜索",
+    "Start":"开始",
+    "Chat-Room":"聊天室",
+    "Online-Members":"在线成员",
+    "Esta-escribiendo":"对方正在输入",
+    "Activo":"活跃", 
+    "Inactivo":"不活跃",
+    "Type-Message":"输入信息",
+    "MEME":"表情包", 
+    "Send":"发送",
+    "has-joined-to-this-room": "已经加入聊天室。",
+    "The-server-has-been-disconnected-Please-log-in-again":"服务器已断开连接，请重新登录。",
+    "has-left-this-room":"已经离开聊天室。"
+
+}

@@ -7,7 +7,7 @@
             <div class="col-sm-9">
               <div class="box box-warning direct-chat direct-chat-warning">
               <div class="box-header with-border">
-                <h3 class="box-title">Chat Room: {{roomCode}}</h3>
+                <h3 class="box-title">{{'Chat-Room'|translate}}: {{roomCode}}</h3>
                 <div class="box-tools pull-right">
                   <!-- Any File Select Button -->
                   <button class="btn btn-box-tool mobile" data-widget="" ngf-select ng-model="Files"><i class="glyphicon glyphicon-paperclip"></i></button>
@@ -156,11 +156,11 @@
                 <!-- Text message  -->
                 <form action="" method="post">
                   <div class="input-group">
-                    <input id="inputText" type="text" name="message" placeholder="Type Message ..." ng-class="{'form-control': true, 'has-error':isMsgBoxEmpty}" ng-model="chatMsg" ng-change="isMsgBoxEmpty=false" ng-enter="sendMsg()" ng-focus="setFocus" focus-me="setFocus"/>
+                    <input id="inputText" type="text" name="message" placeholder="{{'Type-Message'|translate}} ..." ng-class="{'form-control': true, 'has-error':isMsgBoxEmpty}" ng-model="chatMsg" ng-change="isMsgBoxEmpty=false" ng-enter="sendMsg()" ng-focus="setFocus" focus-me="setFocus"/>
                    
 					<span class="input-group-btn">
-						<button type="button" class="btn btn-warning btn-flat" style="margin-left: 4px; margin-right: 4px;" ng-click="sendMeme()">MEME</button>
-						<button type="button" class="btn btn-warning btn-flat" ng-click="sendMsg()">Send</button>
+						<button type="button" class="btn btn-warning btn-flat" style="margin-left: 4px; margin-right: 4px;" ng-click="sendMeme()">{{'MEME'|translate}}</button>
+						<button type="button" class="btn btn-warning btn-flat" ng-click="sendMsg()">{{'Send'|translate}}</button>
                     </span>
                   </div>
                 </form>
@@ -172,7 +172,7 @@
             <div class="col-sm-3 toggle-contact-list">
               <div class="box box-warning direct-chat direct-chat-warning">  
               <div class="box-header with-border">
-                <h3 class="box-title">Online Members</h3>
+                <h3 class="box-title">{{'Online-Members'|translate}}</h3>
               </div><!-- /.box-header -->
               <div id="cajaUsuarios" class="box-body">
                 <!-- Contacts are loaded here -->
@@ -183,10 +183,10 @@
                         <img class='contacts-list-img' ng-src='{{user.userAvatar}}'/>
                         <div class='contacts-list-info'>
                             <div id="userNameContact" class="ol-memeber-name" >{{ user.username }}
-                              <span ng-if="user.activo">(Activo)</span>
-                              <span ng-if="!user.activo">(Inactivo)</span>
+                              <span ng-if="user.activo">({{'Activo'|translate}})</span>
+                              <span ng-if="!user.activo">({{'Inactivo'|translate}})</span>
                             </div>
-                            <div ng-if="user.isWritting" id="estaEscribiendo" >Esta escribiendo...</div>
+                            <div ng-if="user.isWritting" id="estaEscribiendo" >{{'Esta-escribiendo'|translate}}...</div>
                         </div><!-- /.contacts-list-info -->
                         
                       </a>

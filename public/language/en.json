@@ -1,0 +1,22 @@
+{
+    "name": "听风",
+    "age": "27",
+    "Beyond-Just-Messaging":"Beyond Just Messaging",
+    "nickname":"nickname",
+    "room-code":"room code",
+    "Choose-your-Avatar":"Choose your Avatar",
+    "Search":"Search",
+    "Start":"Start",
+    "Chat-Room":"Chat Room",
+    "Online-Members":"Online Members",
+    "Esta-escribiendo":"user is writing",
+    "Activo":"Activo", 
+    "Inactivo":"Inactivo",
+    "Type-Message":"Type Message",
+    "MEME":"MEME", 
+    "Send":"Send",
+    "has-joined-to-this-room": "has joined to this room.",
+    "The-server-has-been-disconnected-Please-log-in-again":"The server has been disconnected. Please log in again.",
+    "has-left-this-room":"has left this room."
+
+}
