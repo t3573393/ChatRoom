@@ -16,6 +16,23 @@
                 </div>
               </div><!-- /.box-header -->
               <div id="divBox"  class="box-body" > <!-- schroll-bottom="messeges">-->
+                <!-- 历史消息加载区域 -->
+                <div class="history-loader" ng-show="hasMoreHistory || isLoadingHistory">
+                    <button 
+                        class="btn btn-default btn-sm" 
+                        ng-click="loadHistory()" 
+                        ng-disabled="isLoadingHistory">
+                        <span ng-show="isLoadingHistory">
+                            <i class="fa fa-spinner fa-spin"></i> 加载中...
+                        </span>
+                        <span ng-show="!isLoadingHistory">
+                            <i class="fa fa-history"></i> 加载历史记录
+                        </span>
+                    </button>
+                    <span ng-show="!hasMoreHistory" class="no-more-history">
+                        暂无更多历史记录
+                    </span>
+                </div>
                 <!-- Conversations are loaded here -->
                 <div  > <!--  schroll-bottom="messeges">-->
                   <!-- Message. Default to the left -->

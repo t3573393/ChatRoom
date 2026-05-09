@@ -267,3 +267,31 @@ html,body{height:100%;}
     border-top-color: #1294f3 !important;
 }
 */
+/* 历史消息加载区域 */
+.history-loader {
+    text-align: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 10px;
+}
+
+.history-loader .btn {
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    color: #666;
+}
+
+.history-loader .btn:hover {
+    background-color: #e9ecef;
+}
+
+.history-loader .no-more-history {
+    color: #999;
+    font-size: 12px;
+    display: block;
+    margin-top: 5px;
+}
+
+.history-loader .fa-spin {
+    margin-right: 5px;
+}
