@@ -12,6 +12,9 @@ var util = require('util');
 
 var path = require('path');
 
+// 数据库模块
+var db = require('./database/db');
+
 
 // Initializing Variables
 var nickname = [];
@@ -26,6 +29,22 @@ var expiryTime = 8;
 var routineTime = 1;
 
 server.listen(8282);		// server starting on port '8282'
+
+// 初始化数据库
+db.initDatabase().then(() => {
+    console.log('数据库初始化成功');
+}).catch(err => {
+    console.error('数据库初始化失败:', err);
+});
+
+// 设置定时清理任务（每小时清理一次）
+setInterval(function() {
+    db.cleanupExpiredMessages().then(count => {
+        if (count > 0) {
+            console.log(`定时清理完成，删除了 ${count} 条过期消息`);
+        }
+    });
+}, 3600000); // 每小时执行
 
 // cofiguring body-parser
 app.use(bodyParser.json({	// setting json limit 	
@@ -452,3 +471,101 @@ function routine_cleanup()
             }
     }
 };
+
+// ===================================== 消息持久化 API ===============================
+// 保存消息 API
+app.post('/v1/messages', function(req, res) {
+    var body = req.body;
+    
+    // 验证必需参数
+    if (!body.roomCode || !body.username || !body.messageType) {
+        res.status(400).json({ 
+            success: false, 
+            error: 'Missing required parameters' 
+        });
+        return;
+    }
+
+    // 保存到数据库
+    db.saveMessage(
+        body.roomCode,
+        body.username,
+        body.userAvatar || '',
+        body.messageType,
+        body.messageContent || '',
+        body.fileInfo || null
+    ).then(messageId => {
+        res.json({ 
+            success: true, 
+            messageId: messageId 
+        });
+    }).catch(err => {
+        console.error('保存消息失败:', err);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Database error' 
+        });
+    });
+});
+
+// 获取历史消息 API
+app.get('/v1/messages/:roomCode', function(req, res) {
+    var roomCode = req.params.roomCode;
+    var pageSize = parseInt(req.query.pageSize) || 20;
+    var beforeId = req.query.beforeId ? parseInt(req.query.beforeId) : null;
+    var page = parseInt(req.query.page) || 1;
+
+    // 限制每页最大条数
+    pageSize = Math.min(pageSize, 50);
+
+    // 获取消息
+    db.getMessages(roomCode, pageSize, beforeId)
+        .then(result => {
+            // 获取总数
+            return db.getMessageCount(roomCode).then(total => {
+                return {
+                    ...result,
+                    total: total
+                };
+            });
+        })
+        .then(result => {
+            // 转换数据库字段为前端格式
+            var messages = result.messages.map(msg => ({
+                id: msg.id,
+                roomCode: msg.room_code,
+                username: msg.username,
+                userAvatar: msg.user_avatar,
+                messageType: msg.message_type,
+                messageContent: msg.message_content,
+                fileInfo: msg.file_info ? JSON.parse(msg.file_info) : null,
+                createdAt: msg.created_at,
+                msgTime: formatTime(new Date(msg.created_at))
+            }));
+
+            res.json({
+                success: true,
+                messages: messages,
+                hasMore: result.hasMore,
+                total: result.total
+            });
+        })
+        .catch(err => {
+            console.error('获取消息失败:', err);
+            res.status(500).json({
+                success: false,
+                error: 'Database error'
+            });
+        });
+});
+
+// 格式化时间函数
+function formatTime(date) {
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    var ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    return hours + ':' + minutes + ' ' + ampm;
+}
