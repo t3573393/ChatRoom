@@ -53,7 +53,18 @@
                       <span class='direct-chat-timestamp pull-right'>{{ messege.msgTime }}</span>
                     </div><!-- /.direct-chat-info -->
                     <img ng-hide="messege.userLogin" class="direct-chat-img" ng-src="{{messege.userAvatar}}" alt="message user image" /><!-- /.direct-chat-img -->
+                    <div class="message-actions" ng-hide="messege.userLogin">
+                        <button class="btn btn-xs btn-default" ng-click="startReply(messege)" title="回复">
+                            <i class="fa fa-reply"></i>
+                        </button>
+                    </div>
                     <div ng-hide="messege.userLogin" ng-class="{'direct-chat-text' : true, 'text-right' : messege.ownMsg}">
+                      <div class="message-with-quote" ng-show="messege.quote">
+                          <div class="quote-block">
+                              <div class="quote-author">{{ messege.quote.username }}:</div>
+                              <div class="quote-text">{{ messege.quote.content | limitTo:100 }}{{ messege.quote.content.length > 100 ? '...' : '' }}</div>
+                          </div>
+                      </div>
                       <div ng-hide="hasFile">
 						<div ng-show="messege.isImageMSG"><img src="{{ messege.msg }}" alt="{{ messege.msg }}" style='width:100%;'></div>
 						<div ng-show="messege.isMeme"><img src="{{ messege.msg }}" alt="{{ messege.msg }}" style='width:20%;'></div>
@@ -169,6 +180,16 @@
                 <div class="box-tools pull-right desktop">
                   <!-- Any File Select Button -->
                   <button class="btn btn-warning btn-flat" data-widget="" ngf-select ng-model="Files"><i class="glyphicon glyphicon-paperclip"></i></button>
+                </div>
+                <!-- Quote Preview -->
+                <div class="quote-preview" ng-show="replyQuote">
+                    <div class="quote-header">
+                        <span class="quote-author">{{ replyQuote.username }}</span>
+                        <button class="quote-close" ng-click="clearReplyQuote()">×</button>
+                    </div>
+                    <div class="quote-content">
+                        {{ replyQuote.content | limitTo:100 }}{{ replyQuote.content.length > 100 ? '...' : '' }}
+                    </div>
                 </div>
                 <!-- Text message  -->
                 <form action="" method="post">
