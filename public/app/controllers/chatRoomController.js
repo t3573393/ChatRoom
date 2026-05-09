@@ -40,7 +40,7 @@ angular.module('Controllers')
         }
     };
 })
-.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService,$translate){		// Chat Page Controller
+.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService,$translate,$sce){		// Chat Page Controller
 	// Varialbles Initialization.
 	$scope.isMsgBoxEmpty = false;
 	$scope.isFileSelected = false;
@@ -50,6 +50,10 @@ angular.module('Controllers')
 	$scope.users = [];
 	$scope.messeges = [];
 	$scope.replyQuote = null;
+	$scope.showMentionDropdown = false;
+	$scope.filteredMentionUsers = [];
+	$scope.selectedMentionIndex = 0;
+	$scope.mentionSearchText = '';
 	console.log("inicializando variables...");
 	$scope.autoScroll = true;
 	// 加载聊天历史
@@ -73,6 +77,58 @@ angular.module('Controllers')
 
 	$scope.clearReplyQuote = function() {
 		$scope.replyQuote = null;
+	};
+
+	$scope.onInputChange = function() {
+		const value = $scope.chatMsg || '';
+		const lastAtIndex = value.lastIndexOf('@');
+		
+		if (lastAtIndex !== -1) {
+			const afterAt = value.substring(lastAtIndex + 1);
+			const beforeAt = value.substring(0, lastAtIndex);
+			const lastSpaceBeforeAt = Math.max(beforeAt.lastIndexOf(' '), beforeAt.lastIndexOf('\n'));
+			const searchText = value.substring(lastSpaceBeforeAt + 1);
+			
+			if (searchText.startsWith('@')) {
+				$scope.mentionSearchText = searchText.substring(1);
+				$scope.showMentionDropdown = true;
+				$scope.filteredMentionUsers = $scope.usersRoom.filter(user => 
+					user.username.toLowerCase().includes($scope.mentionSearchText.toLowerCase()) && 
+					user.username !== $rootScope.username
+				);
+				$scope.selectedMentionIndex = 0;
+				return;
+			}
+		}
+		
+		$scope.showMentionDropdown = false;
+	};
+
+	$scope.selectMentionUser = function(user) {
+		const value = $scope.chatMsg || '';
+		const lastAtIndex = value.lastIndexOf('@');
+		
+		if (lastAtIndex !== -1) {
+			const beforeAt = value.substring(0, lastAtIndex);
+			const afterInsert = beforeAt + '@' + user.username + ' ';
+			$scope.chatMsg = afterInsert;
+			$scope.showMentionDropdown = false;
+		}
+	};
+
+	$scope.renderMessageContent = function(messege) {
+		if (!messege.msg) return '';
+		
+		let content = messege.msg;
+		
+		if (messege.mentions && messege.mentions.length > 0) {
+			messege.mentions.forEach(username => {
+				const regex = new RegExp('@' + username, 'gi');
+				content = content.replace(regex, '<span class="mention">@' + username + '</span>');
+			});
+		}
+		
+		return $sce.trustAsHtml(content);
 	};
 		
 	function beep() {
@@ -491,6 +547,18 @@ $scope.sendCode = function(){
 	}
 
 // ====================================== Messege Sending Code ============================
+	function extractMentions(text) {
+		const mentions = [];
+		const regex = /@(\w+)/g;
+		let match;
+		while ((match = regex.exec(text)) !== null) {
+			if (!mentions.includes(match[1])) {
+				mentions.push(match[1]);
+			}
+		}
+		return mentions;
+	}
+
 	// sending text message function
 	$scope.sendMsg = function(){
 		if ($scope.chatMsg) {
@@ -502,6 +570,8 @@ $scope.sendCode = function(){
 			if ($scope.chatMsg.match(/\.(jpeg|jpg|gif|png)$/) != null){
 				IsImageMSG = true;
 			}
+			
+			const mentions = extractMentions($scope.chatMsg);
 			
 			var messageData = {
 				username: $rootScope.username,
@@ -515,7 +585,8 @@ $scope.sendCode = function(){
 				quote: $scope.replyQuote ? {
 					username: $scope.replyQuote.username,
 					content: $scope.replyQuote.content
-				} : null
+				} : null,
+				mentions: mentions
 			};
 			
 			$socket.emit("send-message", messageData, function(data){
@@ -548,9 +619,17 @@ $scope.sendCode = function(){
 				ScrolltoBottom();
 				beep();
 
+				let notificationBody = 'new message';
+				let isMentioned = data.mentions && data.mentions.includes($rootScope.username);
+				
+				if (isMentioned) {
+					notificationBody = data.username + ' mentioned you';
+				}
+
 				if(window.Notification && Notification.permission == "granted") {
-					var n = new Notification('notification', {
-					   body : 'new message'
+					var n = new Notification('ChatRoom', {
+					   body : notificationBody,
+					   icon: 'app/images/favicon.png'
 					});
 
 					n.onshow = function () {

@@ -58,7 +58,7 @@
                             <i class="fa fa-reply"></i>
                         </button>
                     </div>
-                    <div ng-hide="messege.userLogin" ng-class="{'direct-chat-text' : true, 'text-right' : messege.ownMsg}">
+                    <div ng-hide="messege.userLogin" ng-class="{'direct-chat-text': true, 'text-right': messege.ownMsg}">
                       <div class="message-with-quote" ng-show="messege.quote">
                           <div class="quote-block">
                               <div class="quote-author">{{ messege.quote.username }}:</div>
@@ -68,7 +68,7 @@
                       <div ng-hide="hasFile">
 						<div ng-show="messege.isImageMSG"><img src="{{ messege.msg }}" alt="{{ messege.msg }}" style='width:100%;'></div>
 						<div ng-show="messege.isMeme"><img src="{{ messege.msg }}" alt="{{ messege.msg }}" style='width:20%;'></div>
-						<div ng-show="!messege.isMeme">{{ messege.msg }}</div>
+						<div ng-show="!messege.isMeme" ng-bind-html="renderMessageContent(messege)"></div>
 					  </div>
                       <!-- {{ messege.sendfile }} Media File Messeges -->
                       <div class="item" ng-show="messege.hasFile">
