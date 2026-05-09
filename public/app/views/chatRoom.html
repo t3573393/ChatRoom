@@ -191,10 +191,26 @@
                         {{ replyQuote.content | limitTo:100 }}{{ replyQuote.content.length > 100 ? '...' : '' }}
                     </div>
                 </div>
+                <!-- Mention Dropdown -->
+                <div class="mention-dropdown" ng-show="showMentionDropdown">
+                    <div class="mention-header">选择要提及的用户</div>
+                    <div class="mention-list">
+                        <div class="mention-item" 
+                             ng-repeat="user in filteredMentionUsers"
+                             ng-click="selectMentionUser(user)"
+                             ng-class="{'mention-active': selectedMentionIndex === $index}">
+                            <img class="mention-avatar" ng-src="{{ user.userAvatar }}">
+                            <span class="mention-name">{{ user.username }}</span>
+                        </div>
+                    </div>
+                    <div class="mention-empty" ng-show="filteredMentionUsers.length === 0">
+                        无在线用户
+                    </div>
+                </div>
                 <!-- Text message  -->
                 <form action="" method="post">
-                  <div class="input-group">
-                    <input id="inputText" type="text" name="message" placeholder="{{'Type-Message'|translate}} ..." ng-class="{'form-control': true, 'has-error':isMsgBoxEmpty}" ng-model="chatMsg" ng-change="isMsgBoxEmpty=false" ng-enter="sendMsg()" ng-focus="setFocus" focus-me="setFocus"/>
+                  <div class="input-group" style="position: relative;">
+                    <input id="inputText" type="text" name="message" placeholder="{{'Type-Message'|translate}} ..." ng-class="{'form-control': true, 'has-error':isMsgBoxEmpty}" ng-model="chatMsg" ng-change="onInputChange(); isMsgBoxEmpty=false" ng-enter="sendMsg()" ng-focus="setFocus" focus-me="setFocus"/>
                    
 					<span class="input-group-btn">
 						<button type="button" class="btn btn-warning btn-flat" style="margin-left: 4px; margin-right: 4px;" ng-click="sendMeme()">{{'MEME'|translate}}</button>
