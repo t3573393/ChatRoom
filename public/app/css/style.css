@@ -343,3 +343,88 @@ html,body{height:100%;}
 .history-loader .fa-spin {
     margin-right: 5px;
 }
+
+/* ========== Quote/Reply Styles ========== */
+.quote-preview {
+    background-color: var(--bg-secondary);
+    border-left: 3px solid var(--link-color);
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.quote-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.quote-author {
+    font-weight: bold;
+    color: var(--link-color);
+}
+
+.quote-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 20px;
+    padding: 0 5px;
+}
+
+.quote-close:hover {
+    color: var(--text-primary);
+}
+
+.quote-content {
+    color: var(--text-secondary);
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.message-with-quote {
+    margin-bottom: 5px;
+}
+
+.quote-block {
+    background-color: var(--bg-tertiary);
+    border-left: 2px solid var(--link-color);
+    padding: 5px 10px;
+    margin-bottom: 5px;
+    border-radius: 0 4px 4px 0;
+}
+
+.quote-author {
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--link-color);
+}
+
+.quote-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.message-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+    position: absolute;
+    right: 5px;
+    top: 5px;
+}
+
+.direct-chat-msg:hover .message-actions {
+    opacity: 1;
+}
+
+.message-actions .btn {
+    padding: 2px 6px;
+    font-size: 10px;
+}
