@@ -278,6 +278,10 @@
                 <div class="box-tools pull-right desktop">
                   <!-- Any File Select Button -->
                   <button class="btn btn-warning btn-flat" data-widget="" ngf-select ng-model="Files"><i class="glyphicon glyphicon-paperclip"></i></button>
+                  <!-- Export Button -->
+                  <button class="btn btn-info btn-flat" ng-click="showExportModal()">
+                    <i class="glyphicon glyphicon-download-alt"></i> 导出
+                  </button>
                 </div>
                 <!-- Quote Preview -->
                 <div class="quote-preview" ng-show="replyQuote">
@@ -385,5 +389,8 @@
     </section><!-- /.content -->
   </div><!-- /.container -->
 </div><!-- /.content-wrapper -->
+
+<!-- 导入导出模态框 -->
+<div ng-include="'app/views/exportModal.html'"></div>
 
 

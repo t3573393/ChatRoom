@@ -862,3 +862,67 @@ html,body{height:100%;}
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ========== 聊天记录导出样式 ========== */
+
+#exportModal .modal-header {
+    background-color: var(--link-color);
+    color: white;
+}
+
+#exportModal .modal-title {
+    font-weight: bold;
+}
+
+#exportModal .form-group {
+    margin-bottom: 20px;
+}
+
+#exportModal .form-group > label {
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: block;
+}
+
+#exportModal .radio {
+    margin-left: 20px;
+    margin-bottom: 8px;
+}
+
+#exportModal .radio label {
+    cursor: pointer;
+}
+
+.date-range-picker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.date-range-picker input {
+    flex: 1;
+}
+
+#exportModal .modal-footer .btn {
+    min-width: 80px;
+}
+
+#exportModal .modal-footer .btn-primary {
+    background-color: var(--link-color);
+    border-color: var(--link-color);
+}
+
+#exportModal .modal-footer .btn-primary:hover {
+    background-color: #286090;
+    border-color: #204d74;
+}
+
+#exportModal .modal-footer .btn-default {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+#exportModal .modal-footer .btn-default:hover {
+    background-color: var(--bg-tertiary);
+}
