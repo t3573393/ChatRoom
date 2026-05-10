@@ -58,7 +58,7 @@
                             <i class="fa fa-reply"></i>
                         </button>
                     </div>
-                    <div ng-hide="messege.userLogin" ng-class="{'direct-chat-text': true, 'text-right': messege.ownMsg}">
+                    <div ng-hide="messege.userLogin" ng-class="{'direct-chat-text': true, 'text-right': messege.ownMsg, 'burn-message': messege.isBurnAfterReading}">
                       <div class="message-with-quote" ng-show="messege.quote">
                           <div class="quote-block">
                               <div class="quote-author">{{ messege.quote.username }}:</div>
@@ -70,6 +70,11 @@
 						<div ng-show="messege.isMeme"><img src="{{ messege.msg }}" alt="{{ messege.msg }}" style='width:20%;'></div>
 						<div ng-show="!messege.isMeme" ng-bind-html="renderMessageContent(messege)"></div>
 					  </div>
+                      <div ng-show="messege.isBurnAfterReading" class="burn-indicator">
+                        <span class="burn-icon">🔥</span>
+                        <span ng-show="burnMessages[messege.messageId]" class="burn-timer">{{ burnMessages[messege.messageId].remaining }}s</span>
+                        <div ng-show="burnMessages[messege.messageId]" class="burn-progress" style="width: {{ (burnMessages[messege.messageId].remaining / burnMessages[messege.messageId].total) * 100 }}%"></div>
+                      </div>
                       <!-- {{ messege.sendfile }} Media File Messeges -->
                       <div class="item" ng-show="messege.hasFile">
                           <div class="attachment clearfix">

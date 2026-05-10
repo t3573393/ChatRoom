@@ -193,7 +193,7 @@ function closeDatabase() {
     }
 }
 
-db.getMessagesForExport = function(options) {
+function getMessagesForExport(options) {
     return new Promise((resolve, reject) => {
         var sql = 'SELECT * FROM chat_messages WHERE 1=1';
         var params = [];
@@ -220,9 +220,9 @@ db.getMessagesForExport = function(options) {
             else resolve(rows);
         });
     });
-};
+}
 
-db.deleteBurnAfterReadingMessage = function(messageId) {
+function deleteBurnAfterReadingMessage(messageId) {
     return new Promise((resolve, reject) => {
         var sql = 'DELETE FROM chat_messages WHERE id = ? AND is_burn_after_reading = 1';
         db.run(sql, [messageId], function(err) {
@@ -230,9 +230,9 @@ db.deleteBurnAfterReadingMessage = function(messageId) {
             else resolve(this.changes > 0);
         });
     });
-};
+}
 
-db.getBurnAfterReadingMessage = function(messageId) {
+function getBurnAfterReadingMessage(messageId) {
     return new Promise((resolve, reject) => {
         var sql = 'SELECT * FROM chat_messages WHERE id = ? AND is_burn_after_reading = 1';
         db.get(sql, [messageId], function(err, row) {
@@ -240,7 +240,26 @@ db.getBurnAfterReadingMessage = function(messageId) {
             else resolve(row);
         });
     });
-};
+}
+
+function saveMessageWithBurn(roomCode, username, userAvatar, messageType, messageContent, fileInfo, isBurnAfterReading, burnDuration) {
+    return new Promise((resolve, reject) => {
+        var sql = `
+            INSERT INTO chat_messages
+            (room_code, username, user_avatar, message_type, message_content, file_info, is_burn_after_reading, burn_duration)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        db.run(sql, [roomCode, username, userAvatar, messageType, messageContent, fileInfo, isBurnAfterReading ? 1 : 0, burnDuration || 10], function(err) {
+            if (err) {
+                console.error('保存消息失败:', err);
+                reject(err);
+                return;
+            }
+            resolve(this.lastID);
+        });
+    });
+}
 
 module.exports = {
     initDatabase: initDatabase,
@@ -249,5 +268,9 @@ module.exports = {
     getMessageCount: getMessageCount,
     cleanupExpiredMessages: cleanupExpiredMessages,
     getConfig: getConfig,
-    closeDatabase: closeDatabase
+    closeDatabase: closeDatabase,
+    getMessagesForExport: getMessagesForExport,
+    deleteBurnAfterReadingMessage: deleteBurnAfterReadingMessage,
+    getBurnAfterReadingMessage: getBurnAfterReadingMessage,
+    saveMessageWithBurn: saveMessageWithBurn
 };
