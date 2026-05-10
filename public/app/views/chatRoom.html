@@ -182,9 +182,17 @@
 				
 				<div class="meme-categories">
 					<button class="meme-category-btn" 
+							ng-class="{'active': showFavoritesOnly}"
+							ng-click="toggleFavoritesView(true)">
+						<span>⭐</span>
+						<span class="category-name">收藏</span>
+						<span class="favorites-count" ng-show="favorites.length > 0">({{favorites.length}})</span>
+					</button>
+					
+					<button class="meme-category-btn" 
 							ng-repeat="cat in memeCategories"
-							ng-class="{'active': selectedMemeCategory === cat.id}"
-							ng-click="selectMemeCategory(cat.id)">
+							ng-class="{'active': !showFavoritesOnly && selectedMemeCategory === cat.id}"
+							ng-click="toggleFavoritesView(false); selectMemeCategory(cat.id)">
 						<span>{{cat.icon}}</span>
 						<span class="category-name">{{cat.name}}</span>
 					</button>
@@ -197,11 +205,18 @@
 							 ng-click="enviarMEME(meme)"
 							 title="{{meme.name}}">
 							<img ng-src="{{meme.url}}" alt="{{meme.name}}">
+							<button class="meme-favorite-btn"
+									ng-click="toggleFavorite($event, meme)"
+									ng-class="{'is-favorite': isFavorite(meme)}"
+									title="{{isFavorite(meme) ? '取消收藏' : '添加收藏'}}">
+								<i class="fa" ng-class="isFavorite(meme) ? 'fa-star' : 'fa-star-o'"></i>
+							</button>
 						</div>
 					</div>
 					<div class="meme-empty" ng-show="getFilteredMemes().length === 0">
-						<i class="fa fa-search"></i>
-						<p>未找到匹配的表情包</p>
+						<i class="fa" ng-class="showFavoritesOnly ? 'fa-star-o' : 'fa-search'"></i>
+						<p ng-if="showFavoritesOnly">暂无收藏的表情包</p>
+						<p ng-if="!showFavoritesOnly">未找到匹配的表情包</p>
 					</div>
 				</div>
 			</div>
