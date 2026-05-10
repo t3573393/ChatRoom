@@ -46,7 +46,7 @@ angular.module('Controllers')
         }
     };
 })
-.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService, $translate, $sce, roomManagementService, gifService, burnAfterReadingService, chatExportService){		// Chat Page Controller
+.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService, $translate, $sce, roomManagementService, gifService, burnAfterReadingService, chatExportService, chatHistoryCacheService){		// Chat Page Controller
 	// Varialbles Initialization.
 	$scope.isMsgBoxEmpty = false;
 	$scope.isFileSelected = false;
@@ -236,7 +236,55 @@ angular.module('Controllers')
 	$scope.hasMoreHistory = true;
 	$scope.isLoadingHistory = false;
 	$scope.oldestMessageId = null;
-
+	
+	// 从本地缓存加载最近的消息（快速显示）
+	var cachedMessages = chatHistoryCacheService.getCachedMessages($scope.roomCode);
+	if (cachedMessages && cachedMessages.length > 0) {
+		$scope.messeges = cachedMessages;
+		console.log('从本地缓存加载了', cachedMessages.length, '条消息');
+	}
+	
+	// 登出函数 - 清除所有本地数据
+	$scope.logout = function() {
+		if (!confirm('确定要退出登录吗？')) {
+			return;
+		}
+		
+		// 清除聊天缓存
+		chatHistoryCacheService.clearRoomCache($scope.roomCode);
+		
+		// 清除登录信息（头像保留）
+		localStorage.removeItem('savedUsername');
+		localStorage.removeItem('savedRoomCode');
+		
+		// 清除其他会话数据
+		localStorage.removeItem('currentUsername');
+		localStorage.removeItem('userSession');
+		
+		// 重置状态
+		$rootScope.loggedIn = false;
+		$rootScope.username = null;
+		$rootScope.roomCode = null;
+		$rootScope.userAvatar = null;
+		
+		// 跳转到登录页
+		$location.path('/v1/login');
+	};
+	
+	// 保存消息到本地缓存
+	$scope.saveMessagesToCache = function() {
+		if ($scope.messeges && $scope.messeges.length > 0) {
+			chatHistoryCacheService.cacheMessages($scope.roomCode, $scope.messeges);
+		}
+	};
+	
+	// 定期保存消息到缓存（每30秒）
+	setInterval(function() {
+		if ($rootScope.loggedIn) {
+			$scope.saveMessagesToCache();
+		}
+	}, 30000);
+	
 	// 管理功能函数
 	$scope.kickUser = function(username) {
 		if (!confirm('确定要踢出用户 ' + username + ' 吗？')) {
@@ -922,6 +970,12 @@ angular.module('Controllers')
 	                // 如果是首次加载，替换整个消息列表
 	                if (!$scope.oldestMessageId) {
 	                    $scope.messeges = historyMessages;
+	                    
+	                    // 首次加载后保存到本地缓存
+	                    if (historyMessages.length > 0) {
+	                        chatHistoryCacheService.cacheMessages($scope.roomCode, historyMessages);
+	                        console.log('已保存', historyMessages.length, '条消息到本地缓存');
+	                    }
 	                } else {
 	                    // 否则插入到列表开头
 	                    $scope.messeges = historyMessages.concat($scope.messeges);
