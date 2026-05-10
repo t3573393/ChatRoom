@@ -710,6 +710,74 @@ app.get('/v1/messages/:roomCode', function(req, res) {
         });
 });
 
+// 聊天记录导出 API
+app.get('/api/export-chat', async function(req, res) {
+    try {
+        var scope = req.query.scope || 'current';
+        var roomCode = req.query.roomCode;
+        var startDate = req.query.startDate || null;
+        var endDate = req.query.endDate || null;
+
+        var options = {
+            roomCode: scope === 'current' ? roomCode : null,
+            startDate: startDate,
+            endDate: endDate
+        };
+
+        var messages = await db.getMessagesForExport(options);
+
+        var content = '=== 聊天室聊天记录 ===\n';
+        content += '导出时间: ' + new Date().toLocaleString('zh-CN') + '\n';
+        content += '房间: ' + (scope === 'current' ? roomCode : '所有房间') + '\n';
+        content += '\n----------------------------------------\n';
+
+        messages.forEach(function(msg) {
+            var time = msg.created_at ? new Date(msg.created_at).toLocaleString('zh-CN') : '';
+            var username = msg.username || '未知用户';
+            var message = msg.message_content || '';
+            content += '[' + time + '] ' + username + ': ' + message + '\n';
+        });
+
+        content += '----------------------------------------\n';
+        content += '共 ' + messages.length + ' 条消息\n';
+
+        var filename = 'chat-export-' + new Date().toISOString().split('T')[0] + '.txt';
+
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
+        res.send(content);
+
+        logger.info('[Export] 用户导出聊天记录: ' + scope + ', ' + messages.length + '条消息');
+    } catch (error) {
+        logger.error('[Export] 导出失败:', error);
+        res.status(500).json({ success: false, error: '导出失败' });
+    }
+});
+
+// 阅后即焚消息销毁 API
+app.post('/api/burn-message', async function(req, res) {
+    try {
+        var messageId = parseInt(req.body.messageId);
+
+        if (!messageId) {
+            return res.status(400).json({ success: false, error: '消息ID不能为空' });
+        }
+
+        var deleted = await db.deleteBurnAfterReadingMessage(messageId);
+
+        if (deleted) {
+            io.emit('message-burned', { messageId: messageId });
+            logger.info('[BurnAfterReading] 消息已销毁: ' + messageId);
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ success: false, error: '消息不存在或已被删除' });
+        }
+    } catch (error) {
+        logger.error('[BurnAfterReading] 销毁失败:', error);
+        res.status(500).json({ success: false, error: '销毁失败' });
+    }
+});
+
 // 格式化时间函数
 function formatTime(date) {
     var hours = date.getHours();

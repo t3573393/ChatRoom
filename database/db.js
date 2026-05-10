@@ -57,7 +57,9 @@ function initDatabase() {
                         message_type TEXT NOT NULL,
                         message_content TEXT,
                         file_info TEXT,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        is_burn_after_reading INTEGER DEFAULT 0,
+                        burn_duration INTEGER DEFAULT 10
                     )
                 `);
 
@@ -65,6 +67,14 @@ function initDatabase() {
                     CREATE INDEX IF NOT EXISTS idx_room_created
                     ON chat_messages(room_code, created_at DESC)
                 `);
+
+                db.run('SELECT is_burn_after_reading FROM chat_messages LIMIT 1', function(err, row) {
+                    if (err && err.message.includes('no such column')) {
+                        db.run('ALTER TABLE chat_messages ADD COLUMN is_burn_after_reading INTEGER DEFAULT 0');
+                        db.run('ALTER TABLE chat_messages ADD COLUMN burn_duration INTEGER DEFAULT 10');
+                        logger.info('Database', '已添加阅后即焚相关字段');
+                    }
+                });
 
                 logger.info('Database', '数据库表初始化完成');
                 resolve(db);
@@ -182,6 +192,55 @@ function closeDatabase() {
         console.log('数据库连接已关闭');
     }
 }
+
+db.getMessagesForExport = function(options) {
+    return new Promise((resolve, reject) => {
+        var sql = 'SELECT * FROM chat_messages WHERE 1=1';
+        var params = [];
+
+        if (options.roomCode) {
+            sql += ' AND room_code = ?';
+            params.push(options.roomCode);
+        }
+
+        if (options.startDate) {
+            sql += ' AND created_at >= ?';
+            params.push(options.startDate);
+        }
+
+        if (options.endDate) {
+            sql += ' AND created_at <= ?';
+            params.push(options.endDate);
+        }
+
+        sql += ' ORDER BY created_at ASC';
+
+        db.all(sql, params, function(err, rows) {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
+};
+
+db.deleteBurnAfterReadingMessage = function(messageId) {
+    return new Promise((resolve, reject) => {
+        var sql = 'DELETE FROM chat_messages WHERE id = ? AND is_burn_after_reading = 1';
+        db.run(sql, [messageId], function(err) {
+            if (err) reject(err);
+            else resolve(this.changes > 0);
+        });
+    });
+};
+
+db.getBurnAfterReadingMessage = function(messageId) {
+    return new Promise((resolve, reject) => {
+        var sql = 'SELECT * FROM chat_messages WHERE id = ? AND is_burn_after_reading = 1';
+        db.get(sql, [messageId], function(err, row) {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+};
 
 module.exports = {
     initDatabase: initDatabase,
