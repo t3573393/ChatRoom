@@ -728,3 +728,137 @@ html,body{height:100%;}
 .meme-empty .fa-star-o {
   color: var(--warning-color);
 }
+
+/* ========== GIF 功能样式 ========== */
+
+.meme-category-btn.gif-tab {
+  background-color: #00BFFF;
+  border-color: #00BFFF;
+  color: white;
+  font-weight: bold;
+}
+
+.meme-category-btn.gif-tab:hover {
+  background-color: #00AEEE;
+  border-color: #00AEEE;
+}
+
+.meme-category-btn.gif-tab.active {
+  background-color: #008CBA;
+  border-color: #008CBA;
+}
+
+.gif-panel {
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.gif-search-bar {
+  margin-bottom: 12px;
+}
+
+.gif-search-bar .input-group {
+  width: 100%;
+}
+
+.gif-search-bar input {
+  background-color: var(--input-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.gif-search-bar input:focus {
+  border-color: #00BFFF;
+  box-shadow: none;
+}
+
+.gif-search-bar .btn-primary {
+  background-color: #00BFFF;
+  border-color: #00BFFF;
+}
+
+.gif-search-bar .btn-primary:hover {
+  background-color: #00AEEE;
+  border-color: #00AEEE;
+}
+
+.gif-gallery {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.gif-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.gif-item {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  background-color: var(--bg-secondary);
+}
+
+.gif-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.gif-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gif-loading {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-muted);
+}
+
+.gif-loading i {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.gif-empty {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-muted);
+}
+
+.gif-empty i {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.gif-load-more {
+  text-align: center;
+  padding: 10px;
+}
+
+.gif-gallery::-webkit-scrollbar {
+  width: 6px;
+}
+
+.gif-gallery::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+.gif-gallery::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+@media (max-width: 768px) {
+  .gif-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

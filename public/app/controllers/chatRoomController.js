@@ -46,7 +46,7 @@ angular.module('Controllers')
         }
     };
 })
-.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService,$translate,$sce, roomManagementService){		// Chat Page Controller
+.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService,$translate,$sce, roomManagementService, gifService){		// Chat Page Controller
 	// Varialbles Initialization.
 	$scope.isMsgBoxEmpty = false;
 	$scope.isFileSelected = false;
@@ -427,6 +427,84 @@ angular.module('Controllers')
 	};
 
 	$scope.loadFavorites();
+
+	// GIF 相关变量
+	$scope.gifs = [];
+	$scope.gifSearchText = '';
+	$scope.isLoadingGifs = false;
+	$scope.showGifTab = false;
+	$scope.gifOffset = 0;
+	$scope.hasMoreGifs = true;
+
+	$scope.toggleGifTab = function(show) {
+		$scope.showGifTab = show;
+		if (show && $scope.gifs.length === 0) {
+			$scope.loadTrendingGifs();
+		}
+	};
+
+	$scope.loadTrendingGifs = function() {
+		if ($scope.isLoadingGifs) return;
+		
+		$scope.isLoadingGifs = true;
+		
+		gifService.getTrending(20).then(function(gifs) {
+			$scope.gifs = gifs;
+			$scope.hasMoreGifs = gifs.length >= 20;
+			$scope.isLoadingGifs = false;
+		});
+	};
+
+	$scope.searchGifs = function() {
+		if ($scope.isLoadingGifs) return;
+		
+		var query = $scope.gifSearchText.trim();
+		
+		if (!query) {
+			$scope.loadTrendingGifs();
+			return;
+		}
+		
+		$scope.isLoadingGifs = true;
+		
+		gifService.search(query, 20).then(function(gifs) {
+			$scope.gifs = gifs;
+			$scope.hasMoreGifs = gifs.length >= 20;
+			$scope.isLoadingGifs = false;
+		});
+	};
+
+	$scope.loadMoreGifs = function() {
+		if ($scope.isLoadingGifs || !$scope.hasMoreGifs) return;
+		
+		$scope.gifOffset += 20;
+		$scope.isLoadingGifs = true;
+		
+		var query = $scope.gifSearchText.trim();
+		
+		if (query) {
+			gifService.search(query, 20).then(function(gifs) {
+				$scope.gifs = $scope.gifs.concat(gifs);
+				$scope.hasMoreGifs = gifs.length >= 20;
+				$scope.isLoadingGifs = false;
+			});
+		} else {
+			gifService.getTrending(20).then(function(gifs) {
+				$scope.gifs = $scope.gifs.concat(gifs);
+				$scope.hasMoreGifs = gifs.length >= 20;
+				$scope.isLoadingGifs = false;
+			});
+		}
+	};
+
+	$scope.sendGif = function(gif) {
+		$scope.enviarMEME({
+			id: 'gif_' + gif.id,
+			url: gif.url,
+			category: 'gif',
+			name: gif.title || 'GIF'
+		});
+	};
 
 	$scope.getFilteredMemes = function() {
 		var result = $scope.memes;
