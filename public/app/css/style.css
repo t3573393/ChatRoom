@@ -521,3 +521,150 @@ html,body{height:100%;}
   25% { transform: translateX(-5px); }
   75% { transform: translateX(5px); }
 }
+
+/* ========== 表情包选择器样式 ========== */
+
+.meme-selector {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.meme-search-bar {
+  margin-bottom: 10px;
+}
+
+.meme-search-bar .input-group {
+  width: 100%;
+}
+
+.meme-search-bar input {
+  background-color: var(--input-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.meme-search-bar input:focus {
+  border-color: var(--link-color);
+  box-shadow: none;
+}
+
+.meme-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.meme-category-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+}
+
+.meme-category-btn:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--link-color);
+}
+
+.meme-category-btn.active {
+  background-color: var(--link-color);
+  border-color: var(--link-color);
+  color: white;
+}
+
+.meme-category-btn .category-name {
+  font-weight: 500;
+}
+
+.meme-gallery {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.meme-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.meme-item {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  background-color: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.meme-item:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.meme-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.meme-empty {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-muted);
+}
+
+.meme-empty i {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.meme-empty p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.meme-gallery::-webkit-scrollbar {
+  width: 6px;
+}
+
+.meme-gallery::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+.meme-gallery::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.meme-gallery::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .meme-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  
+  .meme-category-btn .category-name {
+    display: none;
+  }
+}

@@ -312,62 +312,106 @@ angular.module('Controllers')
 	
 // ==================================  MEMES  ===============================
 
-	$scope.memes = [	
+	$scope.memes = [
+		{ id: 1, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f600.png", category: 'happy', name: '笑脸' },
+		{ id: 2, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f602.png", category: 'happy', name: '大笑' },
+		{ id: 3, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f60a.png", category: 'happy', name: '微笑' },
+		{ id: 4, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f970.png", category: 'happy', name: '亲亲' },
+		{ id: 5, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f60d.png", category: 'happy', name: '心动' },
+		{ id: 6, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f917.png", category: 'happy', name: '抱抱' },
+		{ id: 7, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f622.png", category: 'emotion', name: '大哭' },
+		{ id: 8, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f631.png", category: 'emotion', name: '惊恐' },
+		{ id: 9, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f624.png", category: 'emotion', name: '傲娇' },
+		{ id: 10, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f634.png", category: 'emotion', name: '晕菜' },
+		{ id: 11, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f60f.png", category: 'emotion', name: '疑问' },
+		{ id: 12, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f611.png", category: 'emotion', name: '冷漠' },
+		{ id: 13, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f44d.png", category: 'gesture', name: '点赞' },
+		{ id: 14, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f44e.png", category: 'gesture', name: '点踩' },
+		{ id: 15, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f44b.png", category: 'gesture', name: '挥手' },
+		{ id: 16, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f64c.png", category: 'gesture', name: '鼓掌' },
+		{ id: 17, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f91d.png", category: 'gesture', name: '握手' },
+		{ id: 18, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f44f.png", category: 'gesture', name: '击掌' },
+		{ id: 19, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/2764.png", category: 'objects', name: '爱心' },
+		{ id: 20, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f494.png", category: 'objects', name: '红心' },
+		{ id: 21, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/2b50.png", category: 'objects', name: '星星' },
+		{ id: 22, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f525.png", category: 'objects', name: '火焰' },
+		{ id: 23, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f4af.png", category: 'objects', name: '100分' },
+		{ id: 24, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f389.png", category: 'objects', name: '庆祝' }
 	];
 
-	$scope.enviarMEME = function(url){
-		$scope.isFileSelected = false;
-			$scope.isMsg = true;
-			var dateString = formatAMPM(new Date());
-		$socket.emit("send-message",{ username : $rootScope.username, userAvatar : $rootScope.userAvatar, msg : url, isImageMSG: false, isMeme: true, hasMsg : $scope.isMsg , hasFile : $scope.isFileSelected , msgTime : dateString, roomCode : $rootScope.roomCode }, function(data){
-				//delivery report code goes here
-				if (data.success == true) {
-					$scope.chatMsg = "";
-					$scope.setFocus = true;				
-				}
-			});
+	$scope.memeCategories = [
+		{ id: 'all', name: '全部', icon: '🌟' },
+		{ id: 'happy', name: '开心', icon: '😀' },
+		{ id: 'emotion', name: '情感', icon: '😭' },
+		{ id: 'gesture', name: '手势', icon: '👍' },
+		{ id: 'objects', name: '物品', icon: '❤️' }
+	];
+
+	$scope.selectedMemeCategory = 'all';
+	$scope.memeSearchText = '';
+
+	$scope.getFilteredMemes = function() {
+		var result = $scope.memes;
 		
-		$socket.emit("send-meme",{username : $rootScope.username, msg : url, roomCode : $rootScope.roomCode }, function(data){
-				if (data.success == true) {
-					$scope.chatMsg = "";
-					$scope.setFocus = true;				
-				}
+		if ($scope.selectedMemeCategory !== 'all') {
+			result = result.filter(function(meme) {
+				return meme.category === $scope.selectedMemeCategory;
+			});
+		}
+		
+		if ($scope.memeSearchText && $scope.memeSearchText.trim() !== '') {
+			var searchTerm = $scope.memeSearchText.toLowerCase().trim();
+			result = result.filter(function(meme) {
+				return meme.name.toLowerCase().includes(searchTerm);
+			});
+		}
+		
+		return result;
+	};
+
+	$scope.selectMemeCategory = function(categoryId) {
+		$scope.selectedMemeCategory = categoryId;
+	};
+
+	$scope.clearMemeSearch = function() {
+		$scope.memeSearchText = '';
+	};
+
+	$scope.enviarMEME = function(meme) {
+		$scope.isFileSelected = false;
+		$scope.isMsg = true;
+		var dateString = formatAMPM(new Date());
+		var memeUrl = typeof meme === 'string' ? meme : meme.url;
+		
+		$socket.emit("send-message", { username: $rootScope.username, userAvatar: $rootScope.userAvatar, msg: memeUrl, isImageMSG: false, isMeme: true, hasMsg: $scope.isMsg, hasFile: $scope.isFileSelected, msgTime: dateString, roomCode: $rootScope.roomCode }, function(data) {
+			if (data.success == true) {
+				$scope.chatMsg = "";
+				$scope.setFocus = true;
+			}
 		});
 		
-		
-		
-	}
+		$socket.emit("send-meme", { username: $rootScope.username, msg: memeUrl, roomCode: $rootScope.roomCode }, function(data) {
+			if (data.success == true) {
+				$scope.chatMsg = "";
+				$scope.setFocus = true;
+			}
+		});
+	};
+
+	$scope.sendMeme = function() {
+		if ($scope.chatMsg != undefined && $scope.chatMsg.trim() != '') {
+			$scope.enviarMEME($scope.chatMsg);
+		}
+	};
+
 	$scope.removeMeme = function(url){
 		$socket.emit("remove-meme",{username : $rootScope.username, msg : url, roomCode : $rootScope.roomCode }, function(data){
-				if (data.success == true) {
-					$scope.chatMsg = "";
-					$scope.setFocus = true;				
-				}
-		});
-	}
-	$scope.sendMeme = function(){
-			$scope.isFileSelected = false;
-			$scope.isMsg = true;
-			var dateString = formatAMPM(new Date());
-			
-			//addMeme({url: $scope.chatMsg});
-			
-			$socket.emit("send-message",{ username : $rootScope.username, userAvatar : $rootScope.userAvatar, msg : $scope.chatMsg, isImageMSG: false, isMeme: true, hasMsg : $scope.isMsg , hasFile : $scope.isFileSelected , msgTime : dateString, roomCode : $rootScope.roomCode }, function(data){
-				//delivery report code goes here
-				if (data.success == true) {
-					$scope.chatMsg = "";
-					$scope.setFocus = true;				
-				}
-			});
-			if($scope.chatMsg != undefined && $scope.chatMsg.trim() != ''){
-				$socket.emit("send-meme",{username : $rootScope.username, msg : $scope.chatMsg, roomCode : $rootScope.roomCode }, function(data){
-					if (data.success == true) {
-						$scope.chatMsg = "";
-						$scope.setFocus = true;				
-					}
-				});
+			if (data.success == true) {
+				$scope.chatMsg = "";
+				$scope.setFocus = true;
 			}
-	}
+		});
+	};
 		
 	// recieving new text message
 	$socket.on("new meme", function(data){

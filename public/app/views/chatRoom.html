@@ -164,18 +164,47 @@
               </div><!-- /.box-body -->
               <div class="box-footer">
 			  
-				<div class="container-meme" >
-					<span ng-repeat="meme in memes" class="repeat-meme" >
-						<!--<button class= "remove-meme-btn badge badge-dange" ng-click="removeMeme(meme.url)">x</button>
-						<button ng-click="enviarMEME(meme.url)">
-							<img src="{{meme.url}}" alt="{{meme.url}}" width="50px" height="50px" >
-						</button>-->
-						<button type="button"  ng-click="enviarMEME(meme.url)">
-						  <img src="{{meme.url}}" alt="{{meme.url}}" width="50px" height="50px" > 
-						  <button class="badge badge-danger remove-meme-btn" ng-click="removeMeme(meme.url)">x</button>
-						</button>
-					</span>
+				<div class="meme-selector" ng-controller="chatRoomCtrl">
+				<div class="meme-search-bar">
+					<div class="input-group">
+						<input type="text" 
+							   class="form-control" 
+							   placeholder="搜索表情包..." 
+							   ng-model="memeSearchText"
+							   ng-change="memeSearchText = memeSearchText">
+						<span class="input-group-btn" ng-show="memeSearchText">
+							<button class="btn btn-default" type="button" ng-click="clearMemeSearch()">
+								<i class="fa fa-times"></i>
+							</button>
+						</span>
+					</div>
 				</div>
+				
+				<div class="meme-categories">
+					<button class="meme-category-btn" 
+							ng-repeat="cat in memeCategories"
+							ng-class="{'active': selectedMemeCategory === cat.id}"
+							ng-click="selectMemeCategory(cat.id)">
+						<span>{{cat.icon}}</span>
+						<span class="category-name">{{cat.name}}</span>
+					</button>
+				</div>
+				
+				<div class="meme-gallery">
+					<div class="meme-grid">
+						<div class="meme-item" 
+							 ng-repeat="meme in getFilteredMemes() track by meme.id"
+							 ng-click="enviarMEME(meme)"
+							 title="{{meme.name}}">
+							<img ng-src="{{meme.url}}" alt="{{meme.name}}">
+						</div>
+					</div>
+					<div class="meme-empty" ng-show="getFilteredMemes().length === 0">
+						<i class="fa fa-search"></i>
+						<p>未找到匹配的表情包</p>
+					</div>
+				</div>
+			</div>
 				
                 <div class="box-tools pull-right desktop">
                   <!-- Any File Select Button -->
