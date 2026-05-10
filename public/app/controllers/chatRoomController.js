@@ -46,7 +46,7 @@ angular.module('Controllers')
         }
     };
 })
-.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService,$translate,$sce, roomManagementService, gifService){		// Chat Page Controller
+.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService, $translate, $sce, roomManagementService, gifService, burnAfterReadingService, chatExportService){		// Chat Page Controller
 	// Varialbles Initialization.
 	$scope.isMsgBoxEmpty = false;
 	$scope.isFileSelected = false;
@@ -62,6 +62,115 @@ angular.module('Controllers')
 	$scope.mentionSearchText = '';
 	console.log("inicializando variables...");
 	$scope.autoScroll = true;
+	
+	// 阅后即焚相关变量
+	$scope.burnModeEnabled = false;
+	$scope.burnMessages = {};
+	$scope.burnTimers = {};
+	
+	var burnConfig = burnAfterReadingService.getConfig();
+	$scope.burnModeEnabled = burnConfig.enabled;
+	
+	// ========== 导出聊天记录功能 ==========
+	$scope.showExportModal = function() {
+		$('#exportModal').modal('show');
+	};
+	
+	$scope.doExport = function() {
+		var scope = document.querySelector('input[name="scope"]:checked').value;
+		var startDate = document.getElementById('exportStartDate').value;
+		var endDate = document.getElementById('exportEndDate').value;
+		
+		chatExportService.exportChat({
+			scope: scope,
+			roomCode: $rootScope.roomCode,
+			startDate: startDate,
+			endDate: endDate
+		});
+		
+		$('#exportModal').modal('hide');
+	};
+	
+	// ========== 阅后即焚功能 ==========
+	$scope.toggleBurnMode = function() {
+		$scope.burnModeEnabled = !$scope.burnModeEnabled;
+		burnAfterReadingService.setEnabled($scope.burnModeEnabled);
+	};
+	
+	$scope.sendBurnMessage = function() {
+		if (!$scope.chatMsg || $scope.chatMsg.trim() === '') {
+			return;
+		}
+		
+		var dateString = formatAMPM(new Date());
+		var duration = burnAfterReadingService.getDuration();
+		
+		$socket.emit("send-message", {
+			username: $rootScope.username,
+			userAvatar: $rootScope.userAvatar,
+			msg: $scope.chatMsg,
+			isImageMSG: false,
+			isMeme: false,
+			isBurnAfterReading: true,
+			burnDuration: duration,
+			hasMsg: true,
+			hasFile: false,
+			msgTime: dateString,
+			roomCode: $rootScope.roomCode
+		}, function(data) {
+			if (data.success == true) {
+				$scope.chatMsg = "";
+				$scope.setFocus = true;
+				$scope.burnModeEnabled = false;
+				burnAfterReadingService.setEnabled(false);
+			}
+		});
+	};
+	
+	$scope.startBurnCountdown = function(messageId, duration) {
+		if ($scope.burnMessages[messageId]) {
+			return;
+		}
+		
+		$scope.burnMessages[messageId] = {
+			remaining: duration,
+			total: duration,
+			interval: null
+		};
+		
+		$scope.burnMessages[messageId].interval = setInterval(function() {
+			$scope.$apply(function() {
+				$scope.burnMessages[messageId].remaining--;
+				
+				if ($scope.burnMessages[messageId].remaining <= 0) {
+					$scope.destroyBurnMessage(messageId);
+				}
+			});
+		}, 1000);
+	};
+	
+	$scope.destroyBurnMessage = function(messageId) {
+		if ($scope.burnTimers[messageId]) {
+			clearTimeout($scope.burnTimers[messageId]);
+			delete $scope.burnTimers[messageId];
+		}
+		
+		var msgElement = document.querySelector('[data-message-id="' + messageId + '"]');
+		if (msgElement) {
+			msgElement.classList.add('burning');
+			setTimeout(function() {
+				msgElement.remove();
+			}, 500);
+		}
+		
+		$http.post('/api/burn-message', { messageId: messageId })
+			.then(function(response) {
+				console.log('阅后即焚消息已销毁:', messageId);
+			})
+			.catch(function(error) {
+				console.error('销毁阅后即焚消息失败:', error);
+			});
+	};
 	
 	// 管理功能变量
 	$scope.mutedUsers = [];
@@ -902,6 +1011,11 @@ $scope.sendCode = function(){
 
 	// sending text message function
 	$scope.sendMsg = function(){
+		if ($scope.burnModeEnabled && $scope.chatMsg && $scope.chatMsg.trim()) {
+			$scope.sendBurnMessage();
+			return;
+		}
+		
 		if ($scope.chatMsg) {
 			$scope.isFileSelected = false;
 			$scope.isMsg = true;
@@ -987,7 +1101,45 @@ $scope.sendCode = function(){
 			}
 		}
 	});
-
+	
+	// ========== 阅后即焚 Socket 事件 ==========
+	$socket.on("new burn message", function(data) {
+		if(data.username == $rootScope.username){
+			data.ownMsg = true;	
+		}else{
+			data.ownMsg = false;
+		}
+		if(data.roomCode == $rootScope.roomCode){
+			$scope.messeges.push({
+				username: data.username,
+				userAvatar: data.userAvatar,
+				msg: data.msg,
+				msgTime: data.msgTime,
+				isBurnAfterReading: true,
+				burnDuration: data.burnDuration,
+				messageId: data.messageId || ('burn_' + Date.now())
+			});
+			
+			if(!data.ownMsg){
+				SumaMensaje();
+				ScrolltoBottom();
+				beep();
+			}
+			
+			$scope.$apply();
+			
+			var msgId = data.messageId || ('burn_' + Date.now());
+			$timeout(function() {
+				$scope.startBurnCountdown(msgId, data.burnDuration);
+			}, 100);
+		}
+	});
+	
+	$socket.on("message-burned", function(data) {
+		$scope.destroyBurnMessage(data.messageId);
+		$scope.$apply();
+	});
+	
 // ====================================== Image Sending Code ==============================
     $scope.$watch('imageFiles', function () {
         $scope.sendImage($scope.imageFiles);
