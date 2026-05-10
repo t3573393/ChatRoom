@@ -322,6 +322,7 @@
                    
 					<span class="input-group-btn">
 						<button type="button" class="btn btn-warning btn-flat" style="margin-left: 4px; margin-right: 4px;" ng-click="sendMeme()">{{'MEME'|translate}}</button>
+						<button type="button" class="btn btn-danger burn-btn" ng-class="{'active': burnModeEnabled}" ng-click="toggleBurnMode()" title="{{burnModeEnabled ? '阅后即焚模式 (点击取消)' : '点击启用阅后即焚'}}">🔥</button>
 						<button type="button" class="btn btn-warning btn-flat" ng-click="sendMsg()">{{'Send'|translate}}</button>
                     </span>
                   </div>

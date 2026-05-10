@@ -926,3 +926,92 @@ html,body{height:100%;}
 #exportModal .modal-footer .btn-default:hover {
     background-color: var(--bg-tertiary);
 }
+
+/* ========== 阅后即焚消息样式 ========== */
+
+.burn-btn {
+    padding: 6px 12px;
+    font-size: 18px;
+    background-color: #777;
+    border-color: #666;
+    transition: all 0.3s ease;
+}
+
+.burn-btn:hover {
+    background-color: #d9534f;
+    border-color: #c9302c;
+}
+
+.burn-btn.active {
+    background-color: #d9534f;
+    border-color: #c9302c;
+    animation: pulse-burn 1.5s infinite;
+}
+
+@keyframes pulse-burn {
+    0% {
+        box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(217, 83, 79, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(217, 83, 79, 0);
+    }
+}
+
+.burn-message {
+    position: relative;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 10px;
+    margin: 5px 0;
+    animation: fadeIn 0.3s ease;
+}
+
+.burn-message .burn-icon {
+    margin-right: 8px;
+}
+
+.burn-message .burn-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 0 0 10px 10px;
+    transition: width linear;
+}
+
+.burn-message .burn-timer {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-left: 10px;
+}
+
+.burn-message.burning {
+    animation: burnFadeOut 0.5s ease forwards;
+}
+
+@keyframes burnFadeOut {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
