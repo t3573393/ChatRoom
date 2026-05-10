@@ -46,7 +46,7 @@ angular.module('Controllers')
         }
     };
 })
-.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService,$translate,$sce, roomManagementService){		// Chat Page Controller
+.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService, $translate, $sce, roomManagementService, gifService, burnAfterReadingService, chatExportService, chatHistoryCacheService){		// Chat Page Controller
 	// Varialbles Initialization.
 	$scope.isMsgBoxEmpty = false;
 	$scope.isFileSelected = false;
@@ -62,6 +62,115 @@ angular.module('Controllers')
 	$scope.mentionSearchText = '';
 	console.log("inicializando variables...");
 	$scope.autoScroll = true;
+	
+	// 阅后即焚相关变量
+	$scope.burnModeEnabled = false;
+	$scope.burnMessages = {};
+	$scope.burnTimers = {};
+	
+	var burnConfig = burnAfterReadingService.getConfig();
+	$scope.burnModeEnabled = burnConfig.enabled;
+	
+	// ========== 导出聊天记录功能 ==========
+	$scope.showExportModal = function() {
+		$('#exportModal').modal('show');
+	};
+	
+	$scope.doExport = function() {
+		var scope = document.querySelector('input[name="scope"]:checked').value;
+		var startDate = document.getElementById('exportStartDate').value;
+		var endDate = document.getElementById('exportEndDate').value;
+		
+		chatExportService.exportChat({
+			scope: scope,
+			roomCode: $rootScope.roomCode,
+			startDate: startDate,
+			endDate: endDate
+		});
+		
+		$('#exportModal').modal('hide');
+	};
+	
+	// ========== 阅后即焚功能 ==========
+	$scope.toggleBurnMode = function() {
+		$scope.burnModeEnabled = !$scope.burnModeEnabled;
+		burnAfterReadingService.setEnabled($scope.burnModeEnabled);
+	};
+	
+	$scope.sendBurnMessage = function() {
+		if (!$scope.chatMsg || $scope.chatMsg.trim() === '') {
+			return;
+		}
+		
+		var dateString = formatAMPM(new Date());
+		var duration = burnAfterReadingService.getDuration();
+		
+		$socket.emit("send-message", {
+			username: $rootScope.username,
+			userAvatar: $rootScope.userAvatar,
+			msg: $scope.chatMsg,
+			isImageMSG: false,
+			isMeme: false,
+			isBurnAfterReading: true,
+			burnDuration: duration,
+			hasMsg: true,
+			hasFile: false,
+			msgTime: dateString,
+			roomCode: $rootScope.roomCode
+		}, function(data) {
+			if (data.success == true) {
+				$scope.chatMsg = "";
+				$scope.setFocus = true;
+				$scope.burnModeEnabled = false;
+				burnAfterReadingService.setEnabled(false);
+			}
+		});
+	};
+	
+	$scope.startBurnCountdown = function(messageId, duration) {
+		if ($scope.burnMessages[messageId]) {
+			return;
+		}
+		
+		$scope.burnMessages[messageId] = {
+			remaining: duration,
+			total: duration,
+			interval: null
+		};
+		
+		$scope.burnMessages[messageId].interval = setInterval(function() {
+			$scope.$apply(function() {
+				$scope.burnMessages[messageId].remaining--;
+				
+				if ($scope.burnMessages[messageId].remaining <= 0) {
+					$scope.destroyBurnMessage(messageId);
+				}
+			});
+		}, 1000);
+	};
+	
+	$scope.destroyBurnMessage = function(messageId) {
+		if ($scope.burnTimers[messageId]) {
+			clearTimeout($scope.burnTimers[messageId]);
+			delete $scope.burnTimers[messageId];
+		}
+		
+		var msgElement = document.querySelector('[data-message-id="' + messageId + '"]');
+		if (msgElement) {
+			msgElement.classList.add('burning');
+			setTimeout(function() {
+				msgElement.remove();
+			}, 500);
+		}
+		
+		$http.post('/api/burn-message', { messageId: messageId })
+			.then(function(response) {
+				console.log('阅后即焚消息已销毁:', messageId);
+			})
+			.catch(function(error) {
+				console.error('销毁阅后即焚消息失败:', error);
+			});
+	};
 	
 	// 管理功能变量
 	$scope.mutedUsers = [];
@@ -127,7 +236,55 @@ angular.module('Controllers')
 	$scope.hasMoreHistory = true;
 	$scope.isLoadingHistory = false;
 	$scope.oldestMessageId = null;
-
+	
+	// 从本地缓存加载最近的消息（快速显示）
+	var cachedMessages = chatHistoryCacheService.getCachedMessages($scope.roomCode);
+	if (cachedMessages && cachedMessages.length > 0) {
+		$scope.messeges = cachedMessages;
+		console.log('从本地缓存加载了', cachedMessages.length, '条消息');
+	}
+	
+	// 登出函数 - 清除所有本地数据
+	$scope.logout = function() {
+		if (!confirm('确定要退出登录吗？')) {
+			return;
+		}
+		
+		// 清除聊天缓存
+		chatHistoryCacheService.clearRoomCache($scope.roomCode);
+		
+		// 清除登录信息（头像保留）
+		localStorage.removeItem('savedUsername');
+		localStorage.removeItem('savedRoomCode');
+		
+		// 清除其他会话数据
+		localStorage.removeItem('currentUsername');
+		localStorage.removeItem('userSession');
+		
+		// 重置状态
+		$rootScope.loggedIn = false;
+		$rootScope.username = null;
+		$rootScope.roomCode = null;
+		$rootScope.userAvatar = null;
+		
+		// 跳转到登录页
+		$location.path('/v1/login');
+	};
+	
+	// 保存消息到本地缓存
+	$scope.saveMessagesToCache = function() {
+		if ($scope.messeges && $scope.messeges.length > 0) {
+			chatHistoryCacheService.cacheMessages($scope.roomCode, $scope.messeges);
+		}
+	};
+	
+	// 定期保存消息到缓存（每30秒）
+	setInterval(function() {
+		if ($rootScope.loggedIn) {
+			$scope.saveMessagesToCache();
+		}
+	}, 30000);
+	
 	// 管理功能函数
 	$scope.kickUser = function(username) {
 		if (!confirm('确定要踢出用户 ' + username + ' 吗？')) {
@@ -312,62 +469,282 @@ angular.module('Controllers')
 	
 // ==================================  MEMES  ===============================
 
-	$scope.memes = [	
+	$scope.memes = [
+		{ id: 1, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f600.png", category: 'happy', name: '笑脸' },
+		{ id: 2, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f602.png", category: 'happy', name: '大笑' },
+		{ id: 3, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f60a.png", category: 'happy', name: '微笑' },
+		{ id: 4, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f970.png", category: 'happy', name: '亲亲' },
+		{ id: 5, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f60d.png", category: 'happy', name: '心动' },
+		{ id: 6, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f917.png", category: 'happy', name: '抱抱' },
+		{ id: 7, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f622.png", category: 'emotion', name: '大哭' },
+		{ id: 8, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f631.png", category: 'emotion', name: '惊恐' },
+		{ id: 9, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f624.png", category: 'emotion', name: '傲娇' },
+		{ id: 10, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f634.png", category: 'emotion', name: '晕菜' },
+		{ id: 11, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f60f.png", category: 'emotion', name: '疑问' },
+		{ id: 12, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f611.png", category: 'emotion', name: '冷漠' },
+		{ id: 13, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f44d.png", category: 'gesture', name: '点赞' },
+		{ id: 14, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f44e.png", category: 'gesture', name: '点踩' },
+		{ id: 15, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f44b.png", category: 'gesture', name: '挥手' },
+		{ id: 16, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f64c.png", category: 'gesture', name: '鼓掌' },
+		{ id: 17, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f91d.png", category: 'gesture', name: '握手' },
+		{ id: 18, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f44f.png", category: 'gesture', name: '击掌' },
+		{ id: 19, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/2764.png", category: 'objects', name: '爱心' },
+		{ id: 20, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f494.png", category: 'objects', name: '红心' },
+		{ id: 21, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/2b50.png", category: 'objects', name: '星星' },
+		{ id: 22, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f525.png", category: 'objects', name: '火焰' },
+		{ id: 23, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f4af.png", category: 'objects', name: '100分' },
+		{ id: 24, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f389.png", category: 'objects', name: '庆祝' }
 	];
 
-	$scope.enviarMEME = function(url){
-		$scope.isFileSelected = false;
-			$scope.isMsg = true;
-			var dateString = formatAMPM(new Date());
-		$socket.emit("send-message",{ username : $rootScope.username, userAvatar : $rootScope.userAvatar, msg : url, isImageMSG: false, isMeme: true, hasMsg : $scope.isMsg , hasFile : $scope.isFileSelected , msgTime : dateString, roomCode : $rootScope.roomCode }, function(data){
-				//delivery report code goes here
-				if (data.success == true) {
-					$scope.chatMsg = "";
-					$scope.setFocus = true;				
-				}
-			});
-		
-		$socket.emit("send-meme",{username : $rootScope.username, msg : url, roomCode : $rootScope.roomCode }, function(data){
-				if (data.success == true) {
-					$scope.chatMsg = "";
-					$scope.setFocus = true;				
-				}
+	$scope.memeCategories = [
+		{ id: 'all', name: '全部', icon: '🌟' },
+		{ id: 'happy', name: '开心', icon: '😀' },
+		{ id: 'emotion', name: '情感', icon: '😭' },
+		{ id: 'gesture', name: '手势', icon: '👍' },
+		{ id: 'objects', name: '物品', icon: '❤️' }
+	];
+
+	$scope.selectedMemeCategory = 'all';
+	$scope.memeSearchText = '';
+
+	const FAVORITES_KEY = 'meme_favorites';
+	const MAX_FAVORITES = 100;
+	$scope.favorites = [];
+	$scope.showFavoritesOnly = false;
+
+	$scope.loadFavorites = function() {
+		try {
+			var stored = localStorage.getItem(FAVORITES_KEY);
+			if (stored) {
+				$scope.favorites = JSON.parse(stored);
+			}
+		} catch (e) {
+			console.error('加载收藏失败:', e);
+			$scope.favorites = [];
+		}
+	};
+
+	$scope.saveFavorites = function() {
+		try {
+			localStorage.setItem(FAVORITES_KEY, JSON.stringify($scope.favorites));
+		} catch (e) {
+			console.error('保存收藏失败:', e);
+		}
+	};
+
+	$scope.isFavorite = function(meme) {
+		var id = typeof meme === 'object' ? meme.id : meme;
+		return $scope.favorites.some(function(f) {
+			return f.id === id;
 		});
-		
-		
-		
-	}
-	$scope.removeMeme = function(url){
-		$socket.emit("remove-meme",{username : $rootScope.username, msg : url, roomCode : $rootScope.roomCode }, function(data){
-				if (data.success == true) {
-					$scope.chatMsg = "";
-					$scope.setFocus = true;				
-				}
-		});
-	}
-	$scope.sendMeme = function(){
-			$scope.isFileSelected = false;
-			$scope.isMsg = true;
-			var dateString = formatAMPM(new Date());
-			
-			//addMeme({url: $scope.chatMsg});
-			
-			$socket.emit("send-message",{ username : $rootScope.username, userAvatar : $rootScope.userAvatar, msg : $scope.chatMsg, isImageMSG: false, isMeme: true, hasMsg : $scope.isMsg , hasFile : $scope.isFileSelected , msgTime : dateString, roomCode : $rootScope.roomCode }, function(data){
-				//delivery report code goes here
-				if (data.success == true) {
-					$scope.chatMsg = "";
-					$scope.setFocus = true;				
-				}
+	};
+
+	$scope.addToFavorites = function(meme) {
+		if ($scope.favorites.length >= MAX_FAVORITES) {
+			alert('收藏数量已达上限(' + MAX_FAVORITES + '个)');
+			return false;
+		}
+		if (!$scope.isFavorite(meme.id)) {
+			$scope.favorites.push({
+				id: meme.id,
+				url: meme.url,
+				category: meme.category,
+				name: meme.name,
+				addedAt: Date.now()
 			});
-			if($scope.chatMsg != undefined && $scope.chatMsg.trim() != ''){
-				$socket.emit("send-meme",{username : $rootScope.username, msg : $scope.chatMsg, roomCode : $rootScope.roomCode }, function(data){
-					if (data.success == true) {
-						$scope.chatMsg = "";
-						$scope.setFocus = true;				
-					}
+			$scope.saveFavorites();
+		}
+		return true;
+	};
+
+	$scope.removeFromFavorites = function(memeId) {
+		var idx = $scope.favorites.findIndex(function(f) {
+			return f.id === memeId;
+		});
+		if (idx !== -1) {
+			$scope.favorites.splice(idx, 1);
+			$scope.saveFavorites();
+		}
+	};
+
+	$scope.toggleFavorite = function(meme) {
+		if ($scope.isFavorite(meme.id)) {
+			$scope.removeFromFavorites(meme.id);
+		} else {
+			$scope.addToFavorites(meme);
+		}
+	};
+
+	$scope.toggleFavoritesView = function(showFavorites) {
+		if (typeof showFavorites === 'boolean') {
+			$scope.showFavoritesOnly = showFavorites;
+		} else {
+			$scope.showFavoritesOnly = !$scope.showFavoritesOnly;
+		}
+	};
+
+	$scope.loadFavorites();
+
+	// GIF 相关变量
+	$scope.gifs = [];
+	$scope.gifSearchText = '';
+	$scope.isLoadingGifs = false;
+	$scope.showGifTab = false;
+	$scope.gifOffset = 0;
+	$scope.hasMoreGifs = true;
+
+	$scope.toggleGifTab = function(show) {
+		$scope.showGifTab = show;
+		if (show && $scope.gifs.length === 0) {
+			$scope.loadTrendingGifs();
+		}
+	};
+
+	$scope.loadTrendingGifs = function() {
+		if ($scope.isLoadingGifs) return;
+		
+		$scope.isLoadingGifs = true;
+		
+		gifService.getTrending(20).then(function(gifs) {
+			$scope.gifs = gifs;
+			$scope.hasMoreGifs = gifs.length >= 20;
+			$scope.isLoadingGifs = false;
+		});
+	};
+
+	$scope.searchGifs = function() {
+		if ($scope.isLoadingGifs) return;
+		
+		var query = $scope.gifSearchText.trim();
+		
+		if (!query) {
+			$scope.loadTrendingGifs();
+			return;
+		}
+		
+		$scope.isLoadingGifs = true;
+		
+		gifService.search(query, 20).then(function(gifs) {
+			$scope.gifs = gifs;
+			$scope.hasMoreGifs = gifs.length >= 20;
+			$scope.isLoadingGifs = false;
+		});
+	};
+
+	$scope.loadMoreGifs = function() {
+		if ($scope.isLoadingGifs || !$scope.hasMoreGifs) return;
+		
+		$scope.gifOffset += 20;
+		$scope.isLoadingGifs = true;
+		
+		var query = $scope.gifSearchText.trim();
+		
+		if (query) {
+			gifService.search(query, 20).then(function(gifs) {
+				$scope.gifs = $scope.gifs.concat(gifs);
+				$scope.hasMoreGifs = gifs.length >= 20;
+				$scope.isLoadingGifs = false;
+			});
+		} else {
+			gifService.getTrending(20).then(function(gifs) {
+				$scope.gifs = $scope.gifs.concat(gifs);
+				$scope.hasMoreGifs = gifs.length >= 20;
+				$scope.isLoadingGifs = false;
+			});
+		}
+	};
+
+	$scope.sendGif = function(gif) {
+		$scope.enviarMEME({
+			id: 'gif_' + gif.id,
+			url: gif.url,
+			category: 'gif',
+			name: gif.title || 'GIF'
+		});
+	};
+
+	$scope.getFilteredMemes = function() {
+		var result = $scope.memes;
+
+		if ($scope.showFavoritesOnly) {
+			result = $scope.favorites.filter(function(fav) {
+				return result.some(function(meme) {
+					return meme.id === fav.id;
+				});
+			});
+			if ($scope.selectedMemeCategory !== 'all') {
+				result = result.filter(function(meme) {
+					return meme.category === $scope.selectedMemeCategory;
 				});
 			}
-	}
+			if ($scope.memeSearchText && $scope.memeSearchText.trim() !== '') {
+				var searchTerm = $scope.memeSearchText.toLowerCase().trim();
+				result = result.filter(function(meme) {
+					return meme.name.toLowerCase().includes(searchTerm);
+				});
+			}
+			return result;
+		}
+
+		if ($scope.selectedMemeCategory !== 'all') {
+			result = result.filter(function(meme) {
+				return meme.category === $scope.selectedMemeCategory;
+			});
+		}
+
+		if ($scope.memeSearchText && $scope.memeSearchText.trim() !== '') {
+			var searchTerm = $scope.memeSearchText.toLowerCase().trim();
+			result = result.filter(function(meme) {
+				return meme.name.toLowerCase().includes(searchTerm);
+			});
+		}
+
+		return result;
+	};
+
+	$scope.selectMemeCategory = function(categoryId) {
+		$scope.selectedMemeCategory = categoryId;
+	};
+
+	$scope.clearMemeSearch = function() {
+		$scope.memeSearchText = '';
+	};
+
+	$scope.enviarMEME = function(meme) {
+		$scope.isFileSelected = false;
+		$scope.isMsg = true;
+		var dateString = formatAMPM(new Date());
+		var memeUrl = typeof meme === 'string' ? meme : meme.url;
+		
+		$socket.emit("send-message", { username: $rootScope.username, userAvatar: $rootScope.userAvatar, msg: memeUrl, isImageMSG: false, isMeme: true, hasMsg: $scope.isMsg, hasFile: $scope.isFileSelected, msgTime: dateString, roomCode: $rootScope.roomCode }, function(data) {
+			if (data.success == true) {
+				$scope.chatMsg = "";
+				$scope.setFocus = true;
+			}
+		});
+		
+		$socket.emit("send-meme", { username: $rootScope.username, msg: memeUrl, roomCode: $rootScope.roomCode }, function(data) {
+			if (data.success == true) {
+				$scope.chatMsg = "";
+				$scope.setFocus = true;
+			}
+		});
+	};
+
+	$scope.sendMeme = function() {
+		if ($scope.chatMsg != undefined && $scope.chatMsg.trim() != '') {
+			$scope.enviarMEME($scope.chatMsg);
+		}
+	};
+
+	$scope.removeMeme = function(url){
+		$socket.emit("remove-meme",{username : $rootScope.username, msg : url, roomCode : $rootScope.roomCode }, function(data){
+			if (data.success == true) {
+				$scope.chatMsg = "";
+				$scope.setFocus = true;
+			}
+		});
+	};
 		
 	// recieving new text message
 	$socket.on("new meme", function(data){
@@ -593,6 +970,12 @@ angular.module('Controllers')
 	                // 如果是首次加载，替换整个消息列表
 	                if (!$scope.oldestMessageId) {
 	                    $scope.messeges = historyMessages;
+	                    
+	                    // 首次加载后保存到本地缓存
+	                    if (historyMessages.length > 0) {
+	                        chatHistoryCacheService.cacheMessages($scope.roomCode, historyMessages);
+	                        console.log('已保存', historyMessages.length, '条消息到本地缓存');
+	                    }
 	                } else {
 	                    // 否则插入到列表开头
 	                    $scope.messeges = historyMessages.concat($scope.messeges);
@@ -682,6 +1065,11 @@ $scope.sendCode = function(){
 
 	// sending text message function
 	$scope.sendMsg = function(){
+		if ($scope.burnModeEnabled && $scope.chatMsg && $scope.chatMsg.trim()) {
+			$scope.sendBurnMessage();
+			return;
+		}
+		
 		if ($scope.chatMsg) {
 			$scope.isFileSelected = false;
 			$scope.isMsg = true;
@@ -767,7 +1155,45 @@ $scope.sendCode = function(){
 			}
 		}
 	});
-
+	
+	// ========== 阅后即焚 Socket 事件 ==========
+	$socket.on("new burn message", function(data) {
+		if(data.username == $rootScope.username){
+			data.ownMsg = true;	
+		}else{
+			data.ownMsg = false;
+		}
+		if(data.roomCode == $rootScope.roomCode){
+			$scope.messeges.push({
+				username: data.username,
+				userAvatar: data.userAvatar,
+				msg: data.msg,
+				msgTime: data.msgTime,
+				isBurnAfterReading: true,
+				burnDuration: data.burnDuration,
+				messageId: data.messageId || ('burn_' + Date.now())
+			});
+			
+			if(!data.ownMsg){
+				SumaMensaje();
+				ScrolltoBottom();
+				beep();
+			}
+			
+			$scope.$apply();
+			
+			var msgId = data.messageId || ('burn_' + Date.now());
+			$timeout(function() {
+				$scope.startBurnCountdown(msgId, data.burnDuration);
+			}, 100);
+		}
+	});
+	
+	$socket.on("message-burned", function(data) {
+		$scope.destroyBurnMessage(data.messageId);
+		$scope.$apply();
+	});
+	
 // ====================================== Image Sending Code ==============================
     $scope.$watch('imageFiles', function () {
         $scope.sendImage($scope.imageFiles);

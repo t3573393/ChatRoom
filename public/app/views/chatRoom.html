@@ -58,7 +58,7 @@
                             <i class="fa fa-reply"></i>
                         </button>
                     </div>
-                    <div ng-hide="messege.userLogin" ng-class="{'direct-chat-text': true, 'text-right': messege.ownMsg}">
+                    <div ng-hide="messege.userLogin" ng-class="{'direct-chat-text': true, 'text-right': messege.ownMsg, 'burn-message': messege.isBurnAfterReading}">
                       <div class="message-with-quote" ng-show="messege.quote">
                           <div class="quote-block">
                               <div class="quote-author">{{ messege.quote.username }}:</div>
@@ -70,6 +70,11 @@
 						<div ng-show="messege.isMeme"><img src="{{ messege.msg }}" alt="{{ messege.msg }}" style='width:20%;'></div>
 						<div ng-show="!messege.isMeme" ng-bind-html="renderMessageContent(messege)"></div>
 					  </div>
+                      <div ng-show="messege.isBurnAfterReading" class="burn-indicator">
+                        <span class="burn-icon">🔥</span>
+                        <span ng-show="burnMessages[messege.messageId]" class="burn-timer">{{ burnMessages[messege.messageId].remaining }}s</span>
+                        <div ng-show="burnMessages[messege.messageId]" class="burn-progress" style="width: {{ (burnMessages[messege.messageId].remaining / burnMessages[messege.messageId].total) * 100 }}%"></div>
+                      </div>
                       <!-- {{ messege.sendfile }} Media File Messeges -->
                       <div class="item" ng-show="messege.hasFile">
                           <div class="attachment clearfix">
@@ -164,22 +169,124 @@
               </div><!-- /.box-body -->
               <div class="box-footer">
 			  
-				<div class="container-meme" >
-					<span ng-repeat="meme in memes" class="repeat-meme" >
-						<!--<button class= "remove-meme-btn badge badge-dange" ng-click="removeMeme(meme.url)">x</button>
-						<button ng-click="enviarMEME(meme.url)">
-							<img src="{{meme.url}}" alt="{{meme.url}}" width="50px" height="50px" >
-						</button>-->
-						<button type="button"  ng-click="enviarMEME(meme.url)">
-						  <img src="{{meme.url}}" alt="{{meme.url}}" width="50px" height="50px" > 
-						  <button class="badge badge-danger remove-meme-btn" ng-click="removeMeme(meme.url)">x</button>
-						</button>
-					</span>
+				<div class="meme-selector" ng-controller="chatRoomCtrl">
+				<div class="meme-search-bar">
+					<div class="input-group">
+						<input type="text" 
+							   class="form-control" 
+							   placeholder="搜索表情包..." 
+							   ng-model="memeSearchText"
+							   ng-change="memeSearchText = memeSearchText">
+						<span class="input-group-btn" ng-show="memeSearchText">
+							<button class="btn btn-default" type="button" ng-click="clearMemeSearch()">
+								<i class="fa fa-times"></i>
+							</button>
+						</span>
+					</div>
 				</div>
+				
+				<div class="meme-categories">
+					<button class="meme-category-btn gif-tab" 
+							ng-class="{'active': showGifTab}"
+							ng-click="toggleGifTab(!showGifTab); toggleFavoritesView(false)">
+						<span>GIF</span>
+					</button>
+					<button class="meme-category-btn" 
+							ng-class="{'active': showFavoritesOnly}"
+							ng-click="toggleFavoritesView(true); toggleGifTab(false)">
+						<span>⭐</span>
+						<span class="category-name">收藏</span>
+						<span class="favorites-count" ng-show="favorites.length > 0">({{favorites.length}})</span>
+					</button>
+					
+					<button class="meme-category-btn" 
+							ng-repeat="cat in memeCategories"
+							ng-class="{'active': !showFavoritesOnly && !showGifTab && selectedMemeCategory === cat.id}"
+							ng-click="toggleFavoritesView(false); toggleGifTab(false); selectMemeCategory(cat.id)">
+						<span>{{cat.icon}}</span>
+						<span class="category-name">{{cat.name}}</span>
+					</button>
+				</div>
+				
+				<!-- GIF 搜索和显示 -->
+				<div class="gif-panel" ng-show="showGifTab">
+					<div class="gif-search-bar">
+						<div class="input-group">
+							<input type="text" 
+								   class="form-control" 
+								   placeholder="搜索 GIF..." 
+								   ng-model="gifSearchText"
+								   ng-keyup="$event.keyCode === 13 && searchGifs()">
+							<span class="input-group-btn">
+								<button class="btn btn-primary" type="button" ng-click="searchGifs()">
+									<i class="fa fa-search"></i>
+								</button>
+							</span>
+						</div>
+					</div>
+					
+					<div class="gif-gallery">
+						<div class="gif-grid" ng-show="gifs.length > 0">
+							<div class="gif-item" 
+								 ng-repeat="gif in gifs track by gif.id"
+								 ng-click="sendGif(gif)"
+								 title="{{gif.title}}">
+								<img ng-src="{{gif.preview || gif.url}}" 
+									 alt="{{gif.title}}"
+									 loading="lazy">
+							</div>
+						</div>
+						
+						<div class="gif-loading" ng-show="isLoadingGifs">
+							<i class="fa fa-spinner fa-spin"></i>
+							<span>加载中...</span>
+						</div>
+						
+						<div class="gif-empty" ng-show="!isLoadingGifs && gifs.length === 0">
+							<i class="fa fa-search"></i>
+							<p ng-if="gifSearchText">未找到匹配的 GIF</p>
+							<p ng-if="!gifSearchText">搜索或浏览热门 GIF</p>
+						</div>
+						
+						<div class="gif-load-more" ng-show="hasMoreGifs && gifs.length > 0">
+							<button class="btn btn-default btn-sm" ng-click="loadMoreGifs()" ng-disabled="isLoadingGifs">
+								<span ng-show="isLoadingGifs"><i class="fa fa-spinner fa-spin"></i> 加载中...</span>
+								<span ng-show="!isLoadingGifs">加载更多</span>
+							</button>
+						</div>
+					</div>
+				</div>
+				
+				<div class="meme-gallery" ng-show="!showGifTab">
+					<div class="meme-grid">
+						<div class="meme-item" 
+							 ng-repeat="meme in getFilteredMemes() track by meme.id"
+							 ng-click="enviarMEME(meme)"
+							 title="{{meme.name}}">
+							<img ng-src="{{meme.url}}" alt="{{meme.name}}">
+							<button class="meme-favorite-btn"
+									ng-click="toggleFavorite($event, meme)"
+									ng-class="{'is-favorite': isFavorite(meme)}"
+									title="{{isFavorite(meme) ? '取消收藏' : '添加收藏'}}">
+								<i class="fa" ng-class="isFavorite(meme) ? 'fa-star' : 'fa-star-o'"></i>
+							</button>
+						</div>
+					</div>
+					<div class="meme-empty" ng-show="getFilteredMemes().length === 0">
+						<i class="fa" ng-class="showFavoritesOnly ? 'fa-star-o' : 'fa-search'"></i>
+						<p ng-if="showFavoritesOnly">暂无收藏的表情包</p>
+						<p ng-if="!showFavoritesOnly">未找到匹配的表情包</p>
+					</div>
+				</div>
+			</div>
 				
                 <div class="box-tools pull-right desktop">
                   <!-- Any File Select Button -->
                   <button class="btn btn-warning btn-flat" data-widget="" ngf-select ng-model="Files"><i class="glyphicon glyphicon-paperclip"></i></button>
+                  <!-- Export Button -->
+                  <button class="btn btn-info btn-flat" ng-click="showExportModal()">
+                    <i class="glyphicon glyphicon-download-alt"></i> 导出
+                  </button>
                 </div>
                 <!-- Quote Preview -->
                 <div class="quote-preview" ng-show="replyQuote">
@@ -220,6 +327,7 @@
                    
 					<span class="input-group-btn">
 						<button type="button" class="btn btn-warning btn-flat" style="margin-left: 4px; margin-right: 4px;" ng-click="sendMeme()">{{'MEME'|translate}}</button>
+						<button type="button" class="btn btn-danger burn-btn" ng-class="{'active': burnModeEnabled}" ng-click="toggleBurnMode()" title="{{burnModeEnabled ? '阅后即焚模式 (点击取消)' : '点击启用阅后即焚'}}">🔥</button>
 						<button type="button" class="btn btn-warning btn-flat" ng-click="sendMsg()">{{'Send'|translate}}</button>
                     </span>
                   </div>
@@ -287,5 +395,8 @@
     </section><!-- /.content -->
   </div><!-- /.container -->
 </div><!-- /.content-wrapper -->
+
+<!-- 导入导出模态框 -->
+<div ng-include="'app/views/exportModal.html'"></div>
 
 

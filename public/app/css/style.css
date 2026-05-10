@@ -521,3 +521,602 @@ html,body{height:100%;}
   25% { transform: translateX(-5px); }
   75% { transform: translateX(5px); }
 }
+
+/* ========== 表情包选择器样式 ========== */
+
+.meme-selector {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.meme-search-bar {
+  margin-bottom: 10px;
+}
+
+.meme-search-bar .input-group {
+  width: 100%;
+}
+
+.meme-search-bar input {
+  background-color: var(--input-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.meme-search-bar input:focus {
+  border-color: var(--link-color);
+  box-shadow: none;
+}
+
+.meme-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.meme-category-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+}
+
+.meme-category-btn:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--link-color);
+}
+
+.meme-category-btn.active {
+  background-color: var(--link-color);
+  border-color: var(--link-color);
+  color: white;
+}
+
+.meme-category-btn .category-name {
+  font-weight: 500;
+}
+
+.meme-gallery {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.meme-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.meme-item {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  background-color: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.meme-item:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.meme-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.meme-empty {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-muted);
+}
+
+.meme-empty i {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.meme-empty p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.meme-gallery::-webkit-scrollbar {
+  width: 6px;
+}
+
+.meme-gallery::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+.meme-gallery::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.meme-gallery::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .meme-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  
+  .meme-category-btn .category-name {
+    display: none;
+  }
+}
+
+/* ========== 收藏功能样式 ========== */
+
+.meme-category-btn .favorites-count {
+  font-size: 10px;
+  margin-left: 2px;
+  color: var(--warning-color);
+}
+
+.meme-category-btn.active .favorites-count {
+  color: white;
+}
+
+.meme-item {
+  position: relative;
+}
+
+.meme-favorite-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+  color: white;
+  font-size: 12px;
+  z-index: 5;
+}
+
+.meme-item:hover .meme-favorite-btn {
+  opacity: 1;
+}
+
+.meme-favorite-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+  transform: scale(1.1);
+}
+
+.meme-favorite-btn.is-favorite {
+  opacity: 1;
+  color: var(--warning-color);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.meme-favorite-btn.is-favorite:hover {
+  color: var(--danger-color);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.meme-empty .fa-star-o {
+  color: var(--warning-color);
+}
+
+/* ========== GIF 功能样式 ========== */
+
+.meme-category-btn.gif-tab {
+  background-color: #00BFFF;
+  border-color: #00BFFF;
+  color: white;
+  font-weight: bold;
+}
+
+.meme-category-btn.gif-tab:hover {
+  background-color: #00AEEE;
+  border-color: #00AEEE;
+}
+
+.meme-category-btn.gif-tab.active {
+  background-color: #008CBA;
+  border-color: #008CBA;
+}
+
+.gif-panel {
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.gif-search-bar {
+  margin-bottom: 12px;
+}
+
+.gif-search-bar .input-group {
+  width: 100%;
+}
+
+.gif-search-bar input {
+  background-color: var(--input-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.gif-search-bar input:focus {
+  border-color: #00BFFF;
+  box-shadow: none;
+}
+
+.gif-search-bar .btn-primary {
+  background-color: #00BFFF;
+  border-color: #00BFFF;
+}
+
+.gif-search-bar .btn-primary:hover {
+  background-color: #00AEEE;
+  border-color: #00AEEE;
+}
+
+.gif-gallery {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.gif-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.gif-item {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  background-color: var(--bg-secondary);
+}
+
+.gif-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.gif-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gif-loading {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-muted);
+}
+
+.gif-loading i {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.gif-empty {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-muted);
+}
+
+.gif-empty i {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.gif-load-more {
+  text-align: center;
+  padding: 10px;
+}
+
+.gif-gallery::-webkit-scrollbar {
+  width: 6px;
+}
+
+.gif-gallery::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+.gif-gallery::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+@media (max-width: 768px) {
+  .gif-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ========== 聊天记录导出样式 ========== */
+
+#exportModal .modal-header {
+    background-color: var(--link-color);
+    color: white;
+}
+
+#exportModal .modal-title {
+    font-weight: bold;
+}
+
+#exportModal .form-group {
+    margin-bottom: 20px;
+}
+
+#exportModal .form-group > label {
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: block;
+}
+
+#exportModal .radio {
+    margin-left: 20px;
+    margin-bottom: 8px;
+}
+
+#exportModal .radio label {
+    cursor: pointer;
+}
+
+.date-range-picker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.date-range-picker input {
+    flex: 1;
+}
+
+#exportModal .modal-footer .btn {
+    min-width: 80px;
+}
+
+#exportModal .modal-footer .btn-primary {
+    background-color: var(--link-color);
+    border-color: var(--link-color);
+}
+
+#exportModal .modal-footer .btn-primary:hover {
+    background-color: #286090;
+    border-color: #204d74;
+}
+
+#exportModal .modal-footer .btn-default {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+#exportModal .modal-footer .btn-default:hover {
+    background-color: var(--bg-tertiary);
+}
+
+/* ========== 阅后即焚消息样式 ========== */
+
+.burn-btn {
+    padding: 6px 12px;
+    font-size: 18px;
+    background-color: #777;
+    border-color: #666;
+    transition: all 0.3s ease;
+}
+
+.burn-btn:hover {
+    background-color: #d9534f;
+    border-color: #c9302c;
+}
+
+.burn-btn.active {
+    background-color: #d9534f;
+    border-color: #c9302c;
+    animation: pulse-burn 1.5s infinite;
+}
+
+@keyframes pulse-burn {
+    0% {
+        box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(217, 83, 79, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(217, 83, 79, 0);
+    }
+}
+
+.burn-message {
+    position: relative;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 10px;
+    margin: 5px 0;
+    animation: fadeIn 0.3s ease;
+}
+
+.burn-message .burn-icon {
+    margin-right: 8px;
+}
+
+.burn-message .burn-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 0 0 10px 10px;
+    transition: width linear;
+}
+
+.burn-message .burn-timer {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-left: 10px;
+}
+
+.burn-indicator {
+    display: flex;
+    align-items: center;
+    margin-top: 5px;
+    font-size: 12px;
+    color: #ff6b6b;
+}
+
+.burn-indicator .burn-icon {
+    margin-right: 5px;
+}
+
+.burn-indicator .burn-progress {
+    height: 3px;
+    background: linear-gradient(90deg, #ff6b6b, #ff4757);
+    border-radius: 2px;
+    transition: width 1s linear;
+}
+
+.burn-message {
+    position: relative;
+    border: 1px dashed #ff6b6b;
+    background: rgba(255, 107, 107, 0.05);
+}
+
+.burn-message.burning {
+    animation: burnFadeOut 0.5s ease forwards;
+}
+
+@keyframes burnFadeOut {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========== 头像选择器增强样式 ========== */
+
+.avatar-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin: 10px 0;
+    padding: 10px;
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+}
+
+.avatar-container .avatar-thumb {
+    width: 60px;
+    height: 60px;
+    margin: 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.avatar-container .avatar-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.avatar-container .avatar-thumb img:hover {
+    transform: scale(1.1);
+    border-color: var(--info-color);
+}
+
+.avatar-container .avatar-thumb img.avatar-selected {
+    border-color: var(--success-color);
+    box-shadow: 0 0 10px var(--success-color);
+}
+
+.margin-avatar {
+    margin-bottom: 15px;
+}
+
+.margin-avatar .avatar-thumb {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 10px;
+}
+
+.margin-avatar .avatar-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 4px solid var(--border-color);
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.btn-sm i {
+    margin-right: 3px;
+}
+
+/* 响应式调整 */
+@media (max-width: 480px) {
+    .avatar-container .avatar-thumb {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .margin-avatar .avatar-thumb {
+        width: 70px;
+        height: 70px;
+    }
+}
