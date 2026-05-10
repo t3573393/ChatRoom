@@ -1,22 +1,51 @@
+/**
+ * @fileoverview 数据库操作模块
+ * @module database/db
+ * @description SQLite 数据库操作，提供消息存储、查询和清理功能
+ */
+
 var sqlite3 = require('sqlite3').verbose();
 var fs = require('fs');
 var path = require('path');
+var logger = require('../utils/logger');
 
+/**
+ * 数据库文件路径
+ * @type {string}
+ */
 var dbPath = path.join(__dirname, 'chat_history.db');
+
+/**
+ * 数据库连接
+ * @type {sqlite3.Database}
+ */
 var db;
 
+/**
+ * 消息保留天数
+ * @type {number}
+ */
 var messageRetentionDays = 30;
+
+/**
+ * 每页消息数量
+ * @type {number}
+ */
 var messagePageSize = 20;
 
+/**
+ * 初始化数据库
+ * @returns {Promise<sqlite3.Database>} 数据库连接
+ */
 function initDatabase() {
     return new Promise((resolve, reject) => {
         db = new sqlite3.Database(dbPath, function(err) {
             if (err) {
-                console.error('数据库连接失败:', err);
+                logger.error('Database', '数据库连接失败: ' + err.message);
                 reject(err);
                 return;
             }
-            console.log('SQLite 数据库连接成功');
+            logger.info('Database', 'SQLite 数据库连接成功');
 
             db.serialize(function() {
                 db.run(`
@@ -37,7 +66,7 @@ function initDatabase() {
                     ON chat_messages(room_code, created_at DESC)
                 `);
 
-                console.log('数据库表初始化完成');
+                logger.info('Database', '数据库表初始化完成');
                 resolve(db);
             });
         });

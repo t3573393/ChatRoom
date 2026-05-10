@@ -1,5 +1,15 @@
+/**
+ * @fileoverview 房间管理模块
+ * @module database/roomManager
+ * @description 提供房间状态管理、用户踢出、禁言、敏感词过滤功能
+ */
+
 var roomStates = {};
 
+/**
+ * 敏感词列表
+ * @type {Array}
+ */
 var sensitiveWords = [
   '敏感词1',
   '敏感词2',
@@ -8,6 +18,12 @@ var sensitiveWords = [
   '测试敏感词'
 ];
 
+/**
+ * 添加房间创建者
+ * @param {string} roomCode - 房间代码
+ * @param {string} username - 用户名
+ * @returns {boolean} 是否是新房间的创建者
+ */
 function addRoomCreator(roomCode, username) {
   if (!roomStates[roomCode]) {
     roomStates[roomCode] = {
@@ -24,6 +40,12 @@ function addRoomCreator(roomCode, username) {
   }
 }
 
+/**
+ * 判断是否是房间创建者
+ * @param {string} roomCode - 房间代码
+ * @param {string} username - 用户名
+ * @returns {boolean}
+ */
 function isRoomCreator(roomCode, username) {
   return roomStates[roomCode] && 
          roomStates[roomCode].creator === username;

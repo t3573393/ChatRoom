@@ -1,8 +1,19 @@
 'use strict';
 
+/**
+ * @fileoverview 房间管理服务
+ * @module services/roomManagementService
+ * @description 提供踢出用户、禁言/解禁等管理功能
+ */
+
 app.factory('roomManagementService', ['$rootScope', 'socket', function($rootScope, socket) {
     var service = {};
     
+    /**
+     * 踢出用户
+     * @param {string} targetUsername - 目标用户名
+     * @param {Function} callback - 回调函数
+     */
     service.kickUser = function(targetUsername, callback) {
         socket.emit('kick-user', {
             targetUsername: targetUsername

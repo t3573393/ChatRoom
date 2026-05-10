@@ -1,3 +1,9 @@
+/**
+ * @fileoverview 聊天室控制器
+ * @module controllers/chatRoomController
+ * @description 管理聊天室的主要逻辑，包括消息收发、用户管理、引用回复等功能
+ */
+
 angular.module('Controllers')
 .directive('schrollBottom', function () {		// custom directive for scrolling bottom on new message load
   return {

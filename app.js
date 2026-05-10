@@ -1,3 +1,11 @@
+/**
+ * @fileoverview ChatRoom 应用主入口
+ * @module app
+ * @description NodeJS 实时聊天室后端服务，提供文本、图片、音频、文档的实时传输功能
+ * @author Systenics Development Team
+ * @version 1.0.0
+ */
+
 var express = require('express');			// express module
 var app = express();						// initiating express app
 var http = require('http');					// http module
@@ -11,6 +19,10 @@ var formidable = require('formidable');		// file upload module
 var util = require('util');
 
 var path = require('path');
+
+// 日志和错误处理模块
+var logger = require('./utils/logger');
+var errorHandler = require('./utils/errorHandler');
 
 // 数据库模块
 var db = require('./database/db');
@@ -30,21 +42,29 @@ var files_array  = [];
 var expiryTime = 8;
 var routineTime = 1;
 
+// 初始化日志和错误处理系统
+logger.init();
+errorHandler.init();
+
+logger.info('Server', 'ChatRoom 服务器启动');
+
 server.listen(8282);		// server starting on port '8282'
 
 // 初始化数据库
 db.initDatabase().then(() => {
-    console.log('数据库初始化成功');
+    logger.info('Database', '数据库初始化成功');
 }).catch(err => {
-    console.error('数据库初始化失败:', err);
+    logger.error('Database', '数据库初始化失败: ' + err.message);
 });
 
 // 设置定时清理任务（每小时清理一次）
 setInterval(function() {
     db.cleanupExpiredMessages().then(count => {
         if (count > 0) {
-            console.log(`定时清理完成，删除了 ${count} 条过期消息`);
+            logger.info('Database', '定时清理完成，删除了 ' + count + ' 条过期消息');
         }
+    }).catch(err => {
+        logger.error('Database', '定时清理任务失败: ' + err.message);
     });
 }, 3600000); // 每小时执行
 
@@ -95,6 +115,8 @@ ios.on('connection', function(socket){
 				
 				var isCreator = roomManager.addRoomCreator(data.roomCode, data.username);
 				socket.isRoomCreator = isCreator;
+				
+				logger.info('Auth', '用户 ' + data.username + ' 加入房间 ' + data.roomCode + ' (创建者:' + isCreator + ')');
 			}
 	});
 
@@ -135,6 +157,8 @@ ios.on('connection', function(socket){
 				operator: socket.username
 			});
 			
+			logger.info('Admin', '用户 ' + socket.username + ' 踢出 ' + data.targetUsername + ' 从房间 ' + socket.roomCode);
+			
 			callback({success: true});
 		} else {
 			callback({success: false, message: '操作失败'});
@@ -165,6 +189,8 @@ ios.on('connection', function(socket){
 				operator: socket.username
 			});
 			
+			logger.info('Admin', '用户 ' + socket.username + ' 禁言 ' + data.targetUsername + ' 在房间 ' + socket.roomCode);
+			
 			callback({success: true});
 		} else {
 			callback({success: false, message: '操作失败'});
@@ -189,6 +215,8 @@ ios.on('connection', function(socket){
 				unmutedUsername: data.targetUsername,
 				operator: socket.username
 			});
+			
+			logger.info('Admin', '用户 ' + socket.username + ' 解禁 ' + data.targetUsername + ' 在房间 ' + socket.roomCode);
 			
 			callback({success: true});
 		} else {
@@ -313,13 +341,14 @@ ios.on('connection', function(socket){
 		
 		var filterResult = roomManager.filterSensitiveWords(data.msg);
 		if (filterResult.contains) {
+			logger.warn('Security', '检测到敏感词消息: 用户 ' + socket.username + ' 在房间 ' + socket.roomCode);
 			callback({success: false, message: '消息包含敏感词，请修改后重试'});
 			return;
 		}
 		
 		if (nickname[data.username]) {
 			if(data.hasMsg){
-				console.log(data.username+"["+data.roomCode+"]: "+ data.msg);
+				logger.info('Message', '用户 ' + data.username + ' 在房间 ' + data.roomCode + ' 发送消息: ' + (data.msg ? data.msg.substring(0, 50) : 'null'));
 				ios.sockets.emit('new message', data);
 				callback({success:true});	
 			}else if(data.hasFile){
