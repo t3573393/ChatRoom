@@ -668,3 +668,63 @@ html,body{height:100%;}
     display: none;
   }
 }
+
+/* ========== 收藏功能样式 ========== */
+
+.meme-category-btn .favorites-count {
+  font-size: 10px;
+  margin-left: 2px;
+  color: var(--warning-color);
+}
+
+.meme-category-btn.active .favorites-count {
+  color: white;
+}
+
+.meme-item {
+  position: relative;
+}
+
+.meme-favorite-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+  color: white;
+  font-size: 12px;
+  z-index: 5;
+}
+
+.meme-item:hover .meme-favorite-btn {
+  opacity: 1;
+}
+
+.meme-favorite-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+  transform: scale(1.1);
+}
+
+.meme-favorite-btn.is-favorite {
+  opacity: 1;
+  color: var(--warning-color);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.meme-favorite-btn.is-favorite:hover {
+  color: var(--danger-color);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.meme-empty .fa-star-o {
+  color: var(--warning-color);
+}
