@@ -350,22 +350,115 @@ angular.module('Controllers')
 	$scope.selectedMemeCategory = 'all';
 	$scope.memeSearchText = '';
 
+	const FAVORITES_KEY = 'meme_favorites';
+	const MAX_FAVORITES = 100;
+	$scope.favorites = [];
+	$scope.showFavoritesOnly = false;
+
+	$scope.loadFavorites = function() {
+		try {
+			var stored = localStorage.getItem(FAVORITES_KEY);
+			if (stored) {
+				$scope.favorites = JSON.parse(stored);
+			}
+		} catch (e) {
+			console.error('加载收藏失败:', e);
+			$scope.favorites = [];
+		}
+	};
+
+	$scope.saveFavorites = function() {
+		try {
+			localStorage.setItem(FAVORITES_KEY, JSON.stringify($scope.favorites));
+		} catch (e) {
+			console.error('保存收藏失败:', e);
+		}
+	};
+
+	$scope.isFavorite = function(memeId) {
+		return $scope.favorites.some(function(f) {
+			return f.id === memeId;
+		});
+	};
+
+	$scope.addToFavorites = function(meme) {
+		if ($scope.favorites.length >= MAX_FAVORITES) {
+			alert('收藏数量已达上限(' + MAX_FAVORITES + '个)');
+			return false;
+		}
+		if (!$scope.isFavorite(meme.id)) {
+			$scope.favorites.push({
+				id: meme.id,
+				url: meme.url,
+				category: meme.category,
+				name: meme.name,
+				addedAt: Date.now()
+			});
+			$scope.saveFavorites();
+		}
+		return true;
+	};
+
+	$scope.removeFromFavorites = function(memeId) {
+		var idx = $scope.favorites.findIndex(function(f) {
+			return f.id === memeId;
+		});
+		if (idx !== -1) {
+			$scope.favorites.splice(idx, 1);
+			$scope.saveFavorites();
+		}
+	};
+
+	$scope.toggleFavorite = function(meme) {
+		if ($scope.isFavorite(meme.id)) {
+			$scope.removeFromFavorites(meme.id);
+		} else {
+			$scope.addToFavorites(meme);
+		}
+	};
+
+	$scope.toggleFavoritesView = function() {
+		$scope.showFavoritesOnly = !$scope.showFavoritesOnly;
+	};
+
+	$scope.loadFavorites();
+
 	$scope.getFilteredMemes = function() {
 		var result = $scope.memes;
-		
+
+		if ($scope.showFavoritesOnly) {
+			result = $scope.favorites.filter(function(fav) {
+				return result.some(function(meme) {
+					return meme.id === fav.id;
+				});
+			});
+			if ($scope.selectedMemeCategory !== 'all') {
+				result = result.filter(function(meme) {
+					return meme.category === $scope.selectedMemeCategory;
+				});
+			}
+			if ($scope.memeSearchText && $scope.memeSearchText.trim() !== '') {
+				var searchTerm = $scope.memeSearchText.toLowerCase().trim();
+				result = result.filter(function(meme) {
+					return meme.name.toLowerCase().includes(searchTerm);
+				});
+			}
+			return result;
+		}
+
 		if ($scope.selectedMemeCategory !== 'all') {
 			result = result.filter(function(meme) {
 				return meme.category === $scope.selectedMemeCategory;
 			});
 		}
-		
+
 		if ($scope.memeSearchText && $scope.memeSearchText.trim() !== '') {
 			var searchTerm = $scope.memeSearchText.toLowerCase().trim();
 			result = result.filter(function(meme) {
 				return meme.name.toLowerCase().includes(searchTerm);
 			});
 		}
-		
+
 		return result;
 	};
 
