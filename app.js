@@ -349,8 +349,43 @@ ios.on('connection', function(socket){
 		if (nickname[data.username]) {
 			if(data.hasMsg){
 				logger.info('Message', '用户 ' + data.username + ' 在房间 ' + data.roomCode + ' 发送消息: ' + (data.msg ? data.msg.substring(0, 50) : 'null'));
-				ios.sockets.emit('new message', data);
-				callback({success:true});	
+				
+				var messageId = Date.now();
+				
+				var isBurnAfterReading = data.isBurnAfterReading ? 1 : 0;
+				var burnDuration = data.burnDuration || 10;
+				
+				var stmt = db.prepare('INSERT INTO messages (id, username, userAvatar, msg, msgTime, roomCode, isImageMSG, isMeme, isGif, createdAt, isBurnAfterReading, burnDuration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+				stmt.run(
+					messageId,
+					data.username,
+					data.userAvatar,
+					data.msg,
+					data.msgTime,
+					data.roomCode,
+					data.isImageMSG ? 1 : 0,
+					data.isMeme ? 1 : 0,
+					data.isGif ? 1 : 0,
+					new Date().toISOString(),
+					isBurnAfterReading,
+					burnDuration
+				);
+				
+				if (isBurnAfterReading) {
+					io.to(data.roomCode).emit('new burn message', {
+						username: data.username,
+						userAvatar: data.userAvatar,
+						msg: data.msg,
+						msgTime: data.msgTime,
+						isBurnAfterReading: true,
+						burnDuration: burnDuration,
+						messageId: messageId
+					});
+				} else {
+					ios.sockets.emit('new message', data);
+				}
+				
+				callback({success: true});
 			}else if(data.hasFile){
 				if(data.istype == "image"){
 					socket.emit('new message image', data);
