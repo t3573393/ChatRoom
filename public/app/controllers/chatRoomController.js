@@ -375,9 +375,10 @@ angular.module('Controllers')
 		}
 	};
 
-	$scope.isFavorite = function(memeId) {
+	$scope.isFavorite = function(meme) {
+		var id = typeof meme === 'object' ? meme.id : meme;
 		return $scope.favorites.some(function(f) {
-			return f.id === memeId;
+			return f.id === id;
 		});
 	};
 
@@ -417,8 +418,12 @@ angular.module('Controllers')
 		}
 	};
 
-	$scope.toggleFavoritesView = function() {
-		$scope.showFavoritesOnly = !$scope.showFavoritesOnly;
+	$scope.toggleFavoritesView = function(showFavorites) {
+		if (typeof showFavorites === 'boolean') {
+			$scope.showFavoritesOnly = showFavorites;
+		} else {
+			$scope.showFavoritesOnly = !$scope.showFavoritesOnly;
+		}
 	};
 
 	$scope.loadFavorites();
