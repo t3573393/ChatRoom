@@ -207,6 +207,12 @@
                         无在线用户
                     </div>
                 </div>
+                <!-- 错误提示 -->
+                <div class="alert alert-danger" ng-show="messageError" style="margin-bottom: 10px;">
+                  <strong>错误：</strong> {{messageError}}
+                  <button type="button" class="close" ng-click="messageError = ''">&times;</button>
+                </div>
+                
                 <!-- Text message  -->
                 <form action="" method="post">
                   <div class="input-group" style="position: relative;">
@@ -236,11 +242,23 @@
                       <a href>
                         <img class='contacts-list-img' ng-src='{{user.userAvatar}}'/>
                         <div class='contacts-list-info'>
-                            <div id="userNameContact" class="ol-memeber-name" >{{ user.username }}
+                            <div id="userNameContact" class="ol-memeber-name" >
+                              {{ user.username }}
+                              <span ng-if="isUserMuted(user.username)" class="label label-warning" style="margin-left: 5px;">已禁言</span>
                               <span ng-if="user.activo">({{'Activo'|translate}})</span>
                               <span ng-if="!user.activo">({{'Inactivo'|translate}})</span>
                             </div>
                             <div ng-if="user.isWritting" id="estaEscribiendo" >{{'Esta-escribiendo'|translate}}...</div>
+                            
+                            <!-- 管理按钮 -->
+                            <div ng-if="isRoomCreator() && user.username != rootScope.username" style="margin-top: 5px;">
+                              <button class="btn btn-xs btn-danger" ng-click="kickUser(user.username)" title="踢出用户">
+                                <i class="fa fa-ban"></i> 踢出
+                              </button>
+                              <button class="btn btn-xs" ng-class="isUserMuted(user.username) ? 'btn-warning' : 'btn-default'" ng-click="isUserMuted(user.username) ? unmuteUser(user.username) : muteUser(user.username)" title="{{isUserMuted(user.username) ? '解禁用户' : '禁言用户'}}">
+                                <i class="fa {{isUserMuted(user.username) ? 'fa-volume-up' : 'fa-volume-off'}}"></i> {{isUserMuted(user.username) ? '解禁' : '禁言'}}
+                              </button>
+                            </div>
                         </div><!-- /.contacts-list-info -->
                         
                       </a>
