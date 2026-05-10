@@ -14,6 +14,8 @@ var path = require('path');
 
 // 数据库模块
 var db = require('./database/db');
+// 房间管理模块
+var roomManager = require('./database/roomManager');
 
 
 // Initializing Variables
@@ -90,7 +92,108 @@ ios.on('connection', function(socket){
 				socket.isWritting = false;
 				socket.activo = true;
 				nickname[data.username] = socket;
+				
+				var isCreator = roomManager.addRoomCreator(data.roomCode, data.username);
+				socket.isRoomCreator = isCreator;
 			}
+	});
+
+	socket.on('kick-user', function(data, callback) {
+		if (!socket.username || !socket.roomCode) {
+			callback({success: false, message: '参数错误'});
+			return;
+		}
+		
+		if (!roomManager.isRoomCreator(socket.roomCode, socket.username)) {
+			callback({success: false, message: '您没有权限执行此操作'});
+			return;
+		}
+		
+		if (data.targetUsername == socket.username) {
+			callback({success: false, message: '不能踢出自己'});
+			return;
+		}
+		
+		var success = roomManager.kickUser(socket.roomCode, data.targetUsername);
+		
+		if (success) {
+			if (nickname[data.targetUsername]) {
+				var targetSocket = nickname[data.targetUsername];
+				
+				targetSocket.emit('you-have-been-kicked', {
+					roomCode: socket.roomCode,
+					message: '您已被管理员踢出房间'
+				});
+				
+				targetSocket.disconnect(true);
+				
+				delete nickname[data.targetUsername];
+			}
+			
+			ios.sockets.in(socket.roomCode).emit('user-kicked', {
+				kickedUsername: data.targetUsername,
+				operator: socket.username
+			});
+			
+			callback({success: true});
+		} else {
+			callback({success: false, message: '操作失败'});
+		}
+	});
+
+	socket.on('mute-user', function(data, callback) {
+		if (!socket.username || !socket.roomCode) {
+			callback({success: false, message: '参数错误'});
+			return;
+		}
+		
+		if (!roomManager.isRoomCreator(socket.roomCode, socket.username)) {
+			callback({success: false, message: '您没有权限执行此操作'});
+			return;
+		}
+		
+		if (data.targetUsername == socket.username) {
+			callback({success: false, message: '不能禁言自己'});
+			return;
+		}
+		
+		var success = roomManager.muteUser(socket.roomCode, data.targetUsername);
+		
+		if (success) {
+			ios.sockets.in(socket.roomCode).emit('user-muted', {
+				mutedUsername: data.targetUsername,
+				operator: socket.username
+			});
+			
+			callback({success: true});
+		} else {
+			callback({success: false, message: '操作失败'});
+		}
+	});
+
+	socket.on('unmute-user', function(data, callback) {
+		if (!socket.username || !socket.roomCode) {
+			callback({success: false, message: '参数错误'});
+			return;
+		}
+		
+		if (!roomManager.isRoomCreator(socket.roomCode, socket.username)) {
+			callback({success: false, message: '您没有权限执行此操作'});
+			return;
+		}
+		
+		var success = roomManager.unmuteUser(socket.roomCode, data.targetUsername);
+		
+		if (success) {
+			ios.sockets.in(socket.roomCode).emit('user-unmuted', {
+				unmutedUsername: data.targetUsername,
+				operator: socket.username
+			});
+			
+			callback({success: true});
+		} else {
+			callback({success: false, message: '操作失败'});
+		}
 	});
 
 	socket.on('user-activo', function(data, callback){
@@ -198,6 +301,22 @@ ios.on('connection', function(socket){
 
 	// sending new message
 	socket.on('send-message', function(data, callback){
+		if (!socket.username || !socket.roomCode) {
+			callback({success: false, message: '参数错误'});
+			return;
+		}
+		
+		if (roomManager.isMuted(socket.roomCode, socket.username)) {
+			callback({success: false, message: '您已被管理员禁言，无法发送消息'});
+			return;
+		}
+		
+		var filterResult = roomManager.filterSensitiveWords(data.msg);
+		if (filterResult.contains) {
+			callback({success: false, message: '消息包含敏感词，请修改后重试'});
+			return;
+		}
+		
 		if (nickname[data.username]) {
 			if(data.hasMsg){
 				console.log(data.username+"["+data.roomCode+"]: "+ data.msg);
@@ -234,6 +353,9 @@ ios.on('connection', function(socket){
 	
 	// disconnect user handling 
 	socket.on('disconnect', function () {	
+		if (socket.username && socket.roomCode) {
+			roomManager.removeRoomMember(socket.roomCode, socket.username);
+		}
 		delete nickname[socket.username];
 		online_member = [];
 		x = Object.keys(nickname);
