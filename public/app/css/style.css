@@ -495,3 +495,29 @@ html,body{height:100%;}
     padding: 0 4px;
     border-radius: 3px;
 }
+
+/* 管理功能样式 */
+.message-actions .btn {
+  margin-left: 5px;
+}
+
+.direct-chat-msg .system-message {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 5px 0;
+}
+
+.label-warning {
+  background-color: var(--warning-color);
+}
+
+.alert-danger {
+  animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
