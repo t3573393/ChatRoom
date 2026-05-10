@@ -40,7 +40,7 @@ angular.module('Controllers')
         }
     };
 })
-.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService,$translate,$sce){		// Chat Page Controller
+.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService,$translate,$sce, roomManagementService){		// Chat Page Controller
 	// Varialbles Initialization.
 	$scope.isMsgBoxEmpty = false;
 	$scope.isFileSelected = false;
@@ -56,6 +56,63 @@ angular.module('Controllers')
 	$scope.mentionSearchText = '';
 	console.log("inicializando variables...");
 	$scope.autoScroll = true;
+	
+	// 管理功能变量
+	$scope.mutedUsers = [];
+	$rootScope.isRoomCreator = false;
+	$scope.messageError = '';
+	
+	// 注册事件监听器
+	roomManagementService.registerEventListeners($scope);
+	
+	// 管理功能事件处理
+	$scope.$on('you-have-been-kicked', function(event, data) {
+		alert(data.message);
+		$location.path('/login');
+		$scope.$apply();
+	});
+
+	$scope.$on('user-kicked', function(event, data) {
+		var idx = $scope.usersRoom.findIndex(u => u.username === data.kickedUsername);
+		if (idx !== -1) {
+			$scope.usersRoom.splice(idx, 1);
+		}
+		
+		$scope.messeges.push({
+			username: '系统',
+			msg: '用户 ' + data.kickedUsername + ' 已被管理员踢出房间',
+			msgTime: new Date().toLocaleTimeString(),
+			isSystemMessage: true
+		});
+	});
+
+	$scope.$on('user-muted', function(event, data) {
+		if (!$scope.mutedUsers.includes(data.mutedUsername)) {
+			$scope.mutedUsers.push(data.mutedUsername);
+		}
+		
+		$scope.messeges.push({
+			username: '系统',
+			msg: '用户 ' + data.mutedUsername + ' 已被管理员禁言',
+			msgTime: new Date().toLocaleTimeString(),
+			isSystemMessage: true
+		});
+	});
+
+	$scope.$on('user-unmuted', function(event, data) {
+		var idx = $scope.mutedUsers.indexOf(data.unmutedUsername);
+		if (idx !== -1) {
+			$scope.mutedUsers.splice(idx, 1);
+		}
+		
+		$scope.messeges.push({
+			username: '系统',
+			msg: '用户 ' + data.unmutedUsername + ' 已被管理员解禁',
+			msgTime: new Date().toLocaleTimeString(),
+			isSystemMessage: true
+		});
+	});
+	
 	// 加载聊天历史
 	$scope.loadHistory();
 	$scope.roomCode = $rootScope.roomCode;
@@ -65,6 +122,64 @@ angular.module('Controllers')
 	$scope.isLoadingHistory = false;
 	$scope.oldestMessageId = null;
 
+	// 管理功能函数
+	$scope.kickUser = function(username) {
+		if (!confirm('确定要踢出用户 ' + username + ' 吗？')) {
+			return;
+		}
+		
+		roomManagementService.kickUser(username, function(response) {
+			if (response.success) {
+				alert('已成功踢出用户 ' + username);
+			} else {
+				alert('踢出失败：' + response.message);
+			}
+		});
+	};
+
+	$scope.muteUser = function(username) {
+		if (!confirm('确定要禁言用户 ' + username + ' 吗？')) {
+			return;
+		}
+		
+		roomManagementService.muteUser(username, function(response) {
+			if (response.success) {
+				alert('已成功禁言用户 ' + username);
+				if (!$scope.mutedUsers.includes(username)) {
+					$scope.mutedUsers.push(username);
+				}
+			} else {
+				alert('禁言失败：' + response.message);
+			}
+		});
+	};
+
+	$scope.unmuteUser = function(username) {
+		if (!confirm('确定要解禁用户 ' + username + ' 吗？')) {
+			return;
+		}
+		
+		roomManagementService.unmuteUser(username, function(response) {
+			if (response.success) {
+				alert('已成功解禁用户 ' + username);
+				var idx = $scope.mutedUsers.indexOf(username);
+				if (idx !== -1) {
+					$scope.mutedUsers.splice(idx, 1);
+				}
+			} else {
+				alert('解禁失败：' + response.message);
+			}
+		});
+	};
+
+	$scope.isRoomCreator = function() {
+		return roomManagementService.isRoomCreator();
+	};
+
+	$scope.isUserMuted = function(username) {
+		return roomManagementService.isMuted(username, $scope.mutedUsers);
+	};
+	
 	$scope.startReply = function(message) {
 		$scope.replyQuote = {
 			messageId: message.id,
@@ -596,6 +711,13 @@ $scope.sendCode = function(){
 					$scope.replyQuote = null;
 					$scope.setFocus = true;	
 					ScrolltoBottom();				
+				} else {
+					$scope.messageError = data.message;
+					// 5秒后自动清除
+					setTimeout(function() {
+						$scope.messageError = '';
+						$scope.$apply();
+					}, 5000);
 				}
 			});
 		}else{
