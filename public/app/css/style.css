@@ -1040,3 +1040,83 @@ html,body{height:100%;}
         transform: translateY(0);
     }
 }
+
+/* ========== 头像选择器增强样式 ========== */
+
+.avatar-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin: 10px 0;
+    padding: 10px;
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+}
+
+.avatar-container .avatar-thumb {
+    width: 60px;
+    height: 60px;
+    margin: 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.avatar-container .avatar-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.avatar-container .avatar-thumb img:hover {
+    transform: scale(1.1);
+    border-color: var(--info-color);
+}
+
+.avatar-container .avatar-thumb img.avatar-selected {
+    border-color: var(--success-color);
+    box-shadow: 0 0 10px var(--success-color);
+}
+
+.margin-avatar {
+    margin-bottom: 15px;
+}
+
+.margin-avatar .avatar-thumb {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 10px;
+}
+
+.margin-avatar .avatar-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 4px solid var(--border-color);
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.btn-sm i {
+    margin-right: 3px;
+}
+
+/* 响应式调整 */
+@media (max-width: 480px) {
+    .avatar-container .avatar-thumb {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .margin-avatar .avatar-thumb {
+        width: 70px;
+        height: 70px;
+    }
+}
