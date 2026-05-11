@@ -1675,3 +1675,449 @@ mark {
         height: 70px;
     }
 }
+
+/* ========== 消息状态指示器样式 ========== */
+
+.message-status {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 5px;
+    font-size: 12px;
+    color: var(--text-muted);
+    vertical-align: middle;
+}
+
+.message-status .fa {
+    font-size: 14px;
+}
+
+.status-sent {
+    color: #999999;
+}
+
+.status-delivered {
+    color: #999999;
+}
+
+.status-read {
+    color: #1e90ff;
+}
+
+.direct-chat-text {
+    position: relative;
+}
+
+.direct-chat-msg.right .message-status {
+    position: absolute;
+    right: 8px;
+    bottom: 2px;
+}
+
+.direct-chat-msg.right .direct-chat-text {
+    padding-bottom: 20px;
+}
+
+@media (max-width: 480px) {
+    .message-status .fa {
+        font-size: 12px;
+    }
+}
+
+/* ========== 文件预览模态框样式 ========== */
+
+.preview-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1050;
+}
+
+.preview-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    background: var(--card-bg);
+    border-radius: 10px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
+    z-index: 1051;
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--link-color);
+    color: white;
+    border-radius: 10px 10px 0 0;
+}
+
+.preview-header h4 {
+    margin: 0;
+    font-size: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preview-header h4 i {
+    margin-right: 10px;
+}
+
+.preview-header .close {
+    color: white;
+    opacity: 0.8;
+    font-size: 28px;
+    line-height: 1;
+    padding: 0 5px;
+}
+
+.preview-header .close:hover {
+    opacity: 1;
+}
+
+.preview-body {
+    flex: 1;
+    padding: 20px;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+}
+
+.preview-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 15px 20px;
+    border-top: 1px solid var(--border-color);
+    background: var(--card-bg);
+    border-radius: 0 0 10px 10px;
+}
+
+.preview-footer .btn {
+    min-width: 100px;
+}
+
+.preview-footer .btn-primary {
+    background: var(--link-color);
+    border-color: var(--link-color);
+}
+
+.preview-footer .btn-primary:hover {
+    background: #286090;
+    border-color: #204d74;
+}
+
+/* 图片预览容器 */
+.preview-image-container {
+    max-width: 100%;
+    max-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.preview-image-container img {
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: 6px;
+}
+
+/* PDF 预览容器 */
+.preview-pdf-container {
+    width: 100%;
+    height: 70vh;
+}
+
+/* 音频预览容器 */
+.preview-audio-container {
+    width: 100%;
+    padding: 20px;
+}
+
+/* 文档预览 */
+.preview-document {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.preview-document i {
+    font-size: 80px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+}
+
+.preview-document .document-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.preview-document .document-size {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* ========== PDF 查看器样式 ========== */
+
+.pdf-viewer-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--card-bg);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.pdf-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.pdf-btn {
+    padding: 6px 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-primary);
+    transition: all 0.2s;
+}
+
+.pdf-btn:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    border-color: var(--link-color);
+}
+
+.pdf-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pdf-page-info {
+    font-size: 14px;
+    color: var(--text-secondary);
+    min-width: 60px;
+    text-align: center;
+}
+
+.pdf-canvas-container {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+    background: var(--bg-tertiary);
+}
+
+#pdf-canvas {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    background: white;
+}
+
+.pdf-loading,
+.pdf-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
+.pdf-loading i {
+    font-size: 32px;
+    margin-bottom: 10px;
+    color: var(--link-color);
+}
+
+.pdf-error i {
+    font-size: 32px;
+    margin-bottom: 10px;
+    color: var(--danger-color);
+}
+
+/* ========== 音频播放器样式 ========== */
+
+.audio-player-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px var(--shadow);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.audio-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: var(--link-color);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.audio-btn:hover {
+    transform: scale(1.1);
+}
+
+.audio-btn i {
+    font-size: 16px;
+}
+
+.audio-progress {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.audio-progress-bar {
+    height: 100%;
+    background: var(--link-color);
+    border-radius: 3px;
+    transition: width 0.1s linear;
+}
+
+.audio-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+    min-width: 90px;
+    text-align: center;
+}
+
+.volume-slider {
+    width: 80px;
+    height: 4px;
+    -webkit-appearance: none;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    outline: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--link-color);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .preview-modal {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .preview-body {
+        padding: 15px;
+    }
+    
+    .pdf-toolbar {
+        gap: 8px;
+    }
+    
+    .pdf-btn {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+    
+    .audio-player-container {
+        flex-wrap: wrap;
+        padding: 15px;
+    }
+    
+    .audio-progress {
+        order: 3;
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    .volume-slider {
+        width: 60px;
+    }
+}
+
+@media (max-width: 480px) {
+    .preview-header {
+        padding: 12px 15px;
+    }
+    
+    .preview-header h4 {
+        font-size: 14px;
+    }
+    
+    .preview-footer {
+        padding: 12px 15px;
+    }
+    
+    .audio-player-container {
+        gap: 10px;
+        padding: 12px;
+    }
+    
+    .audio-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .audio-time {
+        font-size: 11px;
+        min-width: 80px;
+    }
+}
+
+/* 深色模式支持 */
+[data-theme="dark"] .preview-modal {
+    background: var(--bg-primary);
+}
+
+[data-theme="dark"] .pdf-viewer-container {
+    background: var(--bg-primary);
+}
+
+[data-theme="dark"] .pdf-canvas-container {
+    background: #333;
+}
+
+[data-theme="dark"] #pdf-canvas {
+    background: white;
+}
+
+[data-theme="dark"] .audio-player-container {
+    background: var(--bg-secondary);
+}

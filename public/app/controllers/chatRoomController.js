@@ -46,7 +46,7 @@ angular.module('Controllers')
         }
     };
 })
-.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService, $translate, $sce, roomManagementService, gifService, burnAfterReadingService, chatExportService, chatHistoryCacheService, themeService, searchService, messageEditService){		// Chat Page Controller
+.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService, $translate, $sce, roomManagementService, gifService, burnAfterReadingService, chatExportService, chatHistoryCacheService, themeService, searchService, messageEditService, messageStatusService, filePreviewService){		// Chat Page Controller
 	// Varialbles Initialization.
 	$scope.isMsgBoxEmpty = false;
 	$scope.isFileSelected = false;
@@ -79,9 +79,53 @@ angular.module('Controllers')
 	$scope.editTimeRemaining = 0;
 	$scope.showEditModal = false;
 	$scope.editTimer = null;
+	
+	// 文件预览相关变量
+	$scope.previewFile = null;
+	$scope.showPreview = false;
+	$scope.previewUrl = null;
 
 	var burnConfig = burnAfterReadingService.getConfig();
 	$scope.burnModeEnabled = burnConfig.enabled;
+	
+	// ========== 文件预览功能 ==========
+	$scope.openPreview = function(file, type) {
+		$http.post($rootScope.baseUrl + "/v1/getfile", file).success(function(response) {
+			if (!response.isExpired) {
+				var url = response.serverfilename;
+				if (!url.startsWith('http') && !url.startsWith('/')) {
+					url = $rootScope.baseUrl + '/' + url;
+				}
+				
+				$scope.previewFile = {
+					filename: file.filename,
+					size: file.size,
+					type: type,
+					serverfilename: file.serverfilename
+				};
+				$scope.previewUrl = url;
+				$scope.showPreview = true;
+			} else {
+				var html = '<p id="alert">文件已过期</p>';
+				if ($( ".chat-box" ).has( "p" ).length < 1) {
+					$(html).hide().prependTo(".chat-box").fadeIn(1500);
+					$('#alert').delay(1000).fadeOut('slow', function() {
+						$('#alert').remove();
+					});
+				}
+			}
+		});
+	};
+	
+	$scope.closePreview = function() {
+		$scope.showPreview = false;
+		$scope.previewFile = null;
+		$scope.previewUrl = null;
+	};
+	
+	$scope.getPreviewUrl = function() {
+		return $scope.previewUrl;
+	};
 	
 	// 初始化主题
 	$scope.initTheme = function() {
@@ -462,8 +506,25 @@ angular.module('Controllers')
 		return messageEditService.canRecall(message);
 	};
 
+	$scope.getStatusIcon = function(status) {
+		return messageStatusService.getStatusIcon(status);
+	};
+
+	$scope.getStatusClass = function(status) {
+		return messageStatusService.getStatusClass(status);
+	};
+
+	$scope.getStatusText = function(status) {
+		return messageStatusService.getStatusText(status);
+	};
+
+	$scope.notifyMessageView = function(messageId) {
+		messageStatusService.notifyMessageView(messageId);
+	};
+
 	// 注册 Socket 事件监听
 	messageEditService.registerEventListeners($scope);
+	messageStatusService.registerEventListeners($scope);
 
 	// 管理功能变量
 	$scope.mutedUsers = [];
@@ -747,6 +808,7 @@ angular.module('Controllers')
 					$scope.setFocus = true;				
 				}*/
 			});
+		 messageStatusService.markMessagesRead($rootScope.roomCode);
 	}
 	$window.onblur = function(){
 		console.log("Perdio foco.")
@@ -1521,6 +1583,8 @@ $scope.sendCode = function(){
     //  opens the sent image on gallery_icon click
     $scope.openClickImage = function(msg){
 		if(!msg.ownMsg){
+		$scope.openPreview(msg, 'image');
+		} else {
 		$http.post($rootScope.baseUrl + "/v1/getfile",msg, 
 						{
 							headers: { 'Content-Type': undefined, 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'POST, PUT, OPTIONS' 
@@ -1699,19 +1763,7 @@ $scope.sendCode = function(){
 
     //  opens the sent music file on music_icon click on new window
     $scope.openClickMusic = function(msg){
-    	$http.post($rootScope.baseUrl + "/v1/getfile",msg).success(function (response){
-	    	if(!response.isExpired){
-	    		window.open($rootScope.baseUrl +'/'+response.serverfilename, "_blank");
-	    	}else{	    		
-		    		var html = '<p id="alert">'+ response.expmsg +'</p>';
-				if ($( ".chat-box" ).has( "p" ).length < 1) {
-					$(html).hide().prependTo(".chat-box").fadeIn(1500);
-					$('#alert').delay(1000).fadeOut('slow', function(){
-						$('#alert').remove();
-					});
-				}
-	    	}
-	    });	
+    	$scope.openPreview(msg, 'audio');
 	}
 
 	// recieving new music message
@@ -1864,19 +1916,7 @@ $scope.sendCode = function(){
 
     //  download the document file on doc_icon click 
     $scope.openClickPDF = function(msg){
-    	$http.post($rootScope.baseUrl + "/v1/getfile",msg).success(function (response){
-	    	if(!response.isExpired){
-	    		window.open($rootScope.baseUrl+'/'+response.serverfilename, "_blank");
-	    	}else{
-	    		var html = '<p id="alert">'+ response.expmsg +'</p>';
-	    		if ($( ".chat-box" ).has( "p" ).length < 1) {
-					$(html).hide().prependTo(".chat-box").fadeIn(1500);
-					$('#alert').delay(1000).fadeOut('slow', function(){
-						$('#alert').remove();
-					});
-				}
-	    	}
-	    });
+    	$scope.openPreview(msg, 'pdf');
 	}
 
 	// recieving new document message

@@ -390,6 +390,15 @@ ios.on('connection', function(socket){
 					burnDuration
 				);
 				
+				db.markMessageDelivered(messageId).then(function() {
+					ios.sockets.in(data.roomCode).emit('message-delivered', {
+						messageId: messageId,
+						roomCode: data.roomCode
+					});
+				}).catch(function(err) {
+					logger.error('[Socket-MessageStatus] 标记消息送达失败:', err);
+				});
+				
 				if (isBurnAfterReading) {
 					io.to(data.roomCode).emit('new burn message', {
 						username: data.username,
@@ -505,6 +514,60 @@ ios.on('connection', function(socket){
 		}).catch(function(err) {
 			logger.error('[Socket-Recall] 撤回消息失败:', err);
 			callback({success: false, message: '撤回失败'});
+		});
+	});
+
+	socket.on('mark-messages-read', function(data, callback) {
+		if (!socket.username || !socket.roomCode) {
+			if (callback) callback({success: false, message: '参数错误'});
+			return;
+		}
+
+		var roomCode = socket.roomCode;
+		var username = socket.username;
+
+		db.markMessagesRead(roomCode, username).then(function(count) {
+			ios.sockets.in(roomCode).emit('message-read', {
+				reader: username,
+				roomCode: roomCode,
+				count: count
+			});
+
+			logger.info('[Socket-MessageStatus] 用户 ' + username + ' 查看了房间 ' + roomCode + ' 的消息');
+			if (callback) callback({success: true, count: count});
+		}).catch(function(err) {
+			logger.error('[Socket-MessageStatus] 批量标记已读失败:', err);
+			if (callback) callback({success: false, message: '标记已读失败'});
+		});
+	});
+
+	socket.on('view-message', function(data, callback) {
+		if (!socket.username || !socket.roomCode) {
+			if (callback) callback({success: false, message: '参数错误'});
+			return;
+		}
+
+		var messageId = parseInt(data.messageId);
+		var roomCode = socket.roomCode;
+		var username = socket.username;
+
+		if (!messageId) {
+			if (callback) callback({success: false, message: '消息ID不能为空'});
+			return;
+		}
+
+		db.markMessageRead(messageId, username).then(function() {
+			ios.sockets.in(roomCode).emit('message-read', {
+				messageId: messageId,
+				reader: username,
+				roomCode: roomCode
+			});
+
+			logger.info('[Socket-MessageStatus] 用户 ' + username + ' 查看了消息 ' + messageId);
+			if (callback) callback({success: true});
+		}).catch(function(err) {
+			logger.error('[Socket-MessageStatus] 标记消息已读失败:', err);
+			if (callback) callback({success: false, message: '标记已读失败'});
 		});
 	});
 	socket.on('remove-meme', function(data, callback){

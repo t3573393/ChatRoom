@@ -192,6 +192,12 @@
                     <div class="message-edited" ng-if="messege.status === 'edited'">
                         <i class="fa fa-pencil"></i> 已编辑
                     </div>
+                    
+                    <!-- 消息状态指示器（仅对自己发送的消息显示） -->
+                    <div class="message-status" ng-if="messege.ownMsg && !messege.userLogin && !messege.isBurnAfterReading">
+                        <i class="fa" ng-class="[getStatusIcon(messege.status), getStatusClass(messege.status)]"></i>
+                    </div>
+                    
                     <div ng-hide="messege.userLogin" ng-class="{'direct-chat-text': true, 'text-right': messege.ownMsg, 'burn-message': messege.isBurnAfterReading}">
                       <div class="message-with-quote" ng-show="messege.quote">
                           <div class="quote-block">
@@ -604,4 +610,43 @@
     </div>
 </div>
 
+<!-- 文件预览模态框 -->
+<div class="preview-overlay" ng-if="showPreview" ng-click="closePreview()"></div>
+<div class="preview-modal" ng-show="showPreview">
+    <div class="preview-header">
+        <h4><i class="fa fa-file-o"></i> {{ previewFile.filename }}</h4>
+        <button type="button" class="close" ng-click="closePreview()">&times;</button>
+    </div>
+    <div class="preview-body">
+        <!-- 图片预览 -->
+        <div ng-if="previewFile.type === 'image'" class="preview-image-container">
+            <img ng-src="{{ getPreviewUrl() }}" alt="{{ previewFile.filename }}">
+        </div>
+        
+        <!-- PDF 预览 -->
+        <div ng-if="previewFile.type === 'pdf'" class="preview-pdf-container">
+            <pdf-viewer url="getPreviewUrl()"></pdf-viewer>
+        </div>
+        
+        <!-- 音频预览 -->
+        <div ng-if="previewFile.type === 'audio'" class="preview-audio-container">
+            <audio-player src="getPreviewUrl()"></audio-player>
+        </div>
+        
+        <!-- 文档预览 -->
+        <div ng-if="previewFile.type === 'document'" class="preview-document">
+            <i class="fa fa-file-text-o"></i>
+            <p class="document-name">{{ previewFile.filename }}</p>
+            <p class="document-size" ng-if="previewFile.size">大小: {{ previewFile.size }}</p>
+        </div>
+    </div>
+    <div class="preview-footer">
+        <button type="button" class="btn btn-default" ng-click="closePreview()">
+            关闭
+        </button>
+        <a class="btn btn-primary" ng-href="{{ getPreviewUrl() }}" download="{{ previewFile.filename }}">
+            <i class="fa fa-download"></i> 下载
+        </a>
+    </div>
+</div>
 

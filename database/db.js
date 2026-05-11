@@ -109,6 +109,20 @@ function runMessageMigrations() {
     `, function() {
         logger.info('Database', '消息编辑历史表已创建');
     });
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS message_delivery_status (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            status TEXT DEFAULT 'delivered',
+            delivered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            read_at DATETIME,
+            UNIQUE(message_id, username)
+        )
+    `, function() {
+        logger.info('Database', '消息送达状态表已创建');
+    });
 }
 
 function saveMessage(roomCode, username, userAvatar, messageType, messageContent, fileInfo) {
@@ -468,6 +482,138 @@ function searchMessages(options) {
     });
 }
 
+function markMessageDelivered(messageId) {
+    return new Promise((resolve, reject) => {
+        var sql = `
+            INSERT OR REPLACE INTO message_delivery_status (message_id, username, status, delivered_at)
+            SELECT ?, username, 'delivered', datetime('now')
+            FROM chat_messages
+            WHERE id = ? AND username != (
+                SELECT username FROM chat_messages WHERE id = ?
+            )
+        `;
+        db.run(sql, [messageId, messageId, messageId], function(err) {
+            if (err) {
+                console.error('标记消息已送达失败:', err);
+                reject(err);
+                return;
+            }
+            resolve(this.changes > 0);
+        });
+    });
+}
+
+function markMessageRead(messageId, username) {
+    return new Promise((resolve, reject) => {
+        var sql = `
+            UPDATE message_delivery_status 
+            SET status = 'read', read_at = datetime('now')
+            WHERE message_id = ? AND username = ?
+        `;
+        db.run(sql, [messageId, username], function(err) {
+            if (err) {
+                console.error('标记消息已读失败:', err);
+                reject(err);
+                return;
+            }
+            if (this.changes === 0) {
+                var insertSql = `
+                    INSERT INTO message_delivery_status (message_id, username, status, delivered_at, read_at)
+                    VALUES (?, ?, 'read', datetime('now'), datetime('now'))
+                `;
+                db.run(insertSql, [messageId, username], function(err) {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    resolve(true);
+                });
+            } else {
+                resolve(true);
+            }
+        });
+    });
+}
+
+function markMessagesRead(roomCode, username) {
+    return new Promise((resolve, reject) => {
+        var sql = `
+            INSERT OR REPLACE INTO message_delivery_status (message_id, username, status, delivered_at, read_at)
+            SELECT m.id, ?, 'read', datetime('now'), datetime('now')
+            FROM chat_messages m
+            LEFT JOIN message_delivery_status mds 
+                ON m.id = mds.message_id AND mds.username = ? AND mds.status = 'read'
+            WHERE m.room_code = ? 
+                AND m.username != ?
+                AND mds.id IS NULL
+        `;
+        db.run(sql, [username, username, roomCode, username], function(err) {
+            if (err) {
+                console.error('批量标记消息已读失败:', err);
+                reject(err);
+                return;
+            }
+            resolve(this.changes);
+        });
+    });
+}
+
+function getMessageStatus(messageId) {
+    return new Promise((resolve, reject) => {
+        var sql = `
+            SELECT 
+                mds.username,
+                mds.status,
+                mds.delivered_at,
+                mds.read_at
+            FROM message_delivery_status mds
+            WHERE mds.message_id = ?
+        `;
+        db.all(sql, [messageId], function(err, rows) {
+            if (err) {
+                console.error('获取消息状态失败:', err);
+                reject(err);
+                return;
+            }
+            resolve(rows);
+        });
+    });
+}
+
+function getMessageReadCount(messageId) {
+    return new Promise((resolve, reject) => {
+        var sql = `
+            SELECT COUNT(*) as read_count 
+            FROM message_delivery_status 
+            WHERE message_id = ? AND status = 'read'
+        `;
+        db.get(sql, [messageId], function(err, row) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(row ? row.read_count : 0);
+        });
+    });
+}
+
+function getTotalUsersInRoom(roomCode) {
+    return new Promise((resolve, reject) => {
+        var sql = `
+            SELECT COUNT(DISTINCT username) as total 
+            FROM chat_messages 
+            WHERE room_code = ?
+        `;
+        db.get(sql, [roomCode], function(err, row) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(row ? row.total : 0);
+        });
+    });
+}
+
 function formatTime(date) {
     var hours = date.getHours();
     var minutes = date.getMinutes();
@@ -494,5 +640,11 @@ module.exports = {
     getEditableMessage: getEditableMessage,
     editMessage: editMessage,
     saveEditHistory: saveEditHistory,
-    recallMessage: recallMessage
+    recallMessage: recallMessage,
+    markMessageDelivered: markMessageDelivered,
+    markMessageRead: markMessageRead,
+    markMessagesRead: markMessagesRead,
+    getMessageStatus: getMessageStatus,
+    getMessageReadCount: getMessageReadCount,
+    getTotalUsersInRoom: getTotalUsersInRoom
 };
