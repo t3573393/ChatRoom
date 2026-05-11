@@ -20,6 +20,10 @@
      <!-- iCheck -->
     <link href="lib/plugins/iCheck/square/blue.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" type="text/css" href="app/css/style.css" />
+    <!-- Dark Theme -->
+    <link rel="stylesheet" type="text/css" href="app/css/dark-theme.css" />
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
@@ -68,11 +72,12 @@
     <!-- ng-file-upload-shim.js -->
     <script type="text/javascript" src="lib/plugins/ng-file-upload-shim.js"></script>
     <!-- ng-file-upload.js -->
-    <script type="text/javascript" src="lib/plugins/ng-file-upload.js"></script>
+    <script src="lib/plugins/ng-file-upload.js" type="text/javascript"></script>
     <!-- angular animate 
     <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.1/angular-animate.js"></script>
     -->
     <!-- app.js -->
+    <script src="app/js/app-module.js" type="text/javascript"></script>
     <script src="app/js/app.js" type="text/javascript"></script>
 
     <!-- Controllers -->
@@ -83,10 +88,15 @@
     <script src="app/services/sendImageService.js" type="text/javascript"></script>
     <script src="app/services/burnAfterReadingService.js" type="text/javascript"></script>
     <script src="app/services/chatExportService.js" type="text/javascript"></script>
+    <script src="app/services/themeService.js" type="text/javascript"></script>
+    <script src="app/services/messageStatusService.js" type="text/javascript"></script>
+    <script src="app/services/filePreviewService.js" type="text/javascript"></script>
 	
 	<!-- Directives -->
     <script src="app/directives/angular-image-compress.js" type="text/javascript"></script>
-	  <script src="app/directives/prettify.js" type="text/javascript"></script>
+	<script src="app/directives/prettify.js" type="text/javascript"></script>
+    <script src="app/directives/pdfViewer.js" type="text/javascript"></script>
+    <script src="app/directives/audioPlayer.js" type="text/javascript"></script>
 	
   </body>
 </html>

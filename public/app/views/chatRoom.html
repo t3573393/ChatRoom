@@ -1,5 +1,99 @@
 <!-- Full Width Column -->
 <div class="content-wrapper" style="overflow:hidden;height:80%">
+  <!-- 搜索面板 -->
+  <div class="search-overlay" ng-if="showSearch" ng-click="closeSearch()"></div>
+  <div class="search-panel" ng-show="showSearch">
+    <div class="search-header">
+      <h4><i class="fa fa-search"></i> 搜索消息</h4>
+      <button type="button" class="close" ng-click="closeSearch()">&times;</button>
+    </div>
+    <div class="search-body">
+      <div class="search-input-group">
+        <div class="input-group">
+          <input type="text" 
+                 class="form-control" 
+                 placeholder="输入搜索关键词..." 
+                 ng-model="searchKeyword"
+                 ng-keyup="searchByEnter($event)">
+          <span class="input-group-btn">
+            <button class="btn btn-primary" type="button" ng-click="doSearch()" ng-disabled="isSearching">
+              <i class="fa" ng-class="{'fa-search': !isSearching, 'fa-spinner fa-spin': isSearching}"></i>
+            </button>
+          </span>
+        </div>
+      </div>
+      
+      <div class="search-filters">
+        <div class="filter-row">
+          <div class="filter-item">
+            <label>房间:</label>
+            <input type="text" class="form-control" placeholder="可选，搜索所有房间" ng-model="searchRoom">
+          </div>
+        </div>
+        <div class="filter-row">
+          <div class="filter-item">
+            <label>开始日期:</label>
+            <input type="date" class="form-control" ng-model="searchStartDate">
+          </div>
+          <div class="filter-item">
+            <label>结束日期:</label>
+            <input type="date" class="form-control" ng-model="searchEndDate">
+          </div>
+        </div>
+      </div>
+      
+      <div class="search-results-info" ng-show="searchTotal > 0">
+        <span>找到 {{ searchTotal }} 条结果，第 {{ searchPage }} 页</span>
+      </div>
+      
+      <div class="search-results-panel">
+        <div class="search-loading" ng-show="isSearching">
+          <i class="fa fa-spinner fa-spin"></i>
+          <span>搜索中...</span>
+        </div>
+        
+        <div class="search-empty" ng-show="!isSearching && searchKeyword && searchResults.length === 0">
+          <i class="fa fa-search"></i>
+          <p>未找到匹配的消息</p>
+        </div>
+        
+        <div class="search-result-item" 
+             ng-repeat="result in searchResults track by result.id"
+             ng-click="goToMessage(result)"
+             data-message-id="{{ result.id }}">
+          <div class="result-header">
+            <img class="result-avatar" ng-src="{{ result.userAvatar || 'app/images/user.png' }}">
+            <span class="result-username">{{ result.username }}</span>
+            <span class="result-time">{{ result.msgTime }}</span>
+            <span class="result-room" ng-if="result.roomCode">
+              <i class="fa fa-comments"></i> {{ result.roomCode }}
+            </span>
+          </div>
+          <div class="result-content" ng-bind-html="result.highlightedContent || result.messageContent"></div>
+        </div>
+        
+        <div class="search-no-keyword" ng-show="!isSearching && !searchKeyword">
+          <i class="fa fa-keyboard-o"></i>
+          <p>输入关键词开始搜索</p>
+        </div>
+      </div>
+      
+      <div class="search-pagination" ng-show="searchTotal > 0">
+        <button class="btn btn-default btn-sm" 
+                ng-click="prevSearchPage()" 
+                ng-disabled="searchPage <= 1 || isSearching">
+          <i class="fa fa-chevron-left"></i> 上一页
+        </button>
+        <span class="page-info">{{ searchPage }}</span>
+        <button class="btn btn-default btn-sm" 
+                ng-click="nextSearchPage()" 
+                ng-disabled="!searchHasMore || isSearching">
+          下一页 <i class="fa fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  
   <div class="container">
     <!-- Main content -->
     <section class="content">                          
@@ -9,6 +103,14 @@
               <div class="box-header with-border">
                 <h3 class="box-title">{{'Chat-Room'|translate}}: {{roomCode}}</h3>
                 <div class="box-tools pull-right">
+                  <!-- Search Button -->
+                  <button class="btn btn-box-tool" ng-click="showSearchPanel()" title="搜索消息">
+                    <i class="fa fa-search"></i>
+                  </button>
+                  <!-- Theme Toggle Button -->
+                  <button class="btn btn-box-tool" ng-click="toggleThemePanel()" title="切换主题">
+                    <i class="fa" ng-class="{'fa-moon-o': currentTheme === 'light', 'fa-sun-o': currentTheme === 'dark'}"></i>
+                  </button>
                   <!-- Any File Select Button -->
                   <button class="btn btn-box-tool mobile" data-widget="" ngf-select ng-model="Files"><i class="glyphicon glyphicon-paperclip"></i></button>
                   <!-- onlime member list mobile -->
@@ -36,7 +138,7 @@
                 <!-- Conversations are loaded here -->
                 <div  > <!--  schroll-bottom="messeges">-->
                   <!-- Message. Default to the left -->
-                  <div ng-repeat="messege in messeges" ng-class="{'direct-chat-msg' : true, 'right' : messege.ownMsg, 'wordwrap' : true}" >
+                  <div ng-repeat="messege in messeges" ng-class="{'direct-chat-msg' : true, 'right' : messege.ownMsg, 'wordwrap' : true}" data-message-id="{{messege.id || messege.messageId}}">
 					
 					
 					<div ng-class="[{'user-in' : messege.esin}, {'user-out' : !messege.esin}, 'text-center']" ng-show="messege.userLogin">
@@ -57,7 +159,45 @@
                         <button class="btn btn-xs btn-default" ng-click="startReply(messege)" title="回复">
                             <i class="fa fa-reply"></i>
                         </button>
+                        <button class="btn btn-xs btn-default"
+                                ng-if="messege.username === username && (canEditMessage(messege) || canRecallMessage(messege)) && messege.status !== 'recalled'"
+                                title="更多操作">
+                            <i class="fa fa-ellipsis-h"></i>
+                        </button>
                     </div>
+
+                    <!-- 编辑/撤回按钮组 -->
+                    <div class="message-edit-actions"
+                         ng-if="messege.username === username && !messege.userLogin && messege.status !== 'recalled'">
+                        <button class="btn-action btn-edit"
+                                ng-click="showEditDialog(messege)"
+                                ng-if="canEditMessage(messege)"
+                                title="编辑">
+                            <i class="fa fa-edit"></i>
+                        </button>
+                        <button class="btn-action btn-recall"
+                                ng-click="recallMessage(messege)"
+                                ng-if="canRecallMessage(messege)"
+                                title="撤回">
+                            <i class="fa fa-undo"></i>
+                        </button>
+                    </div>
+
+                    <!-- 撤回消息显示 -->
+                    <div class="message-recalled" ng-if="messege.status === 'recalled'">
+                        <i class="fa fa-undo"></i> 此消息已被撤回
+                    </div>
+
+                    <!-- 已编辑标识 -->
+                    <div class="message-edited" ng-if="messege.status === 'edited'">
+                        <i class="fa fa-pencil"></i> 已编辑
+                    </div>
+                    
+                    <!-- 消息状态指示器（仅对自己发送的消息显示） -->
+                    <div class="message-status" ng-if="messege.ownMsg && !messege.userLogin && !messege.isBurnAfterReading">
+                        <i class="fa" ng-class="[getStatusIcon(messege.status), getStatusClass(messege.status)]"></i>
+                    </div>
+                    
                     <div ng-hide="messege.userLogin" ng-class="{'direct-chat-text': true, 'text-right': messege.ownMsg, 'burn-message': messege.isBurnAfterReading}">
                       <div class="message-with-quote" ng-show="messege.quote">
                           <div class="quote-block">
@@ -399,4 +539,114 @@
 <!-- 导入导出模态框 -->
 <div ng-include="'app/views/exportModal.html'"></div>
 
+<!-- 主题设置面板 -->
+<div class="theme-panel-overlay" ng-if="showThemePanel" ng-click="toggleThemePanel()"></div>
+<div class="theme-panel" ng-show="showThemePanel">
+    <div class="panel-header">
+        <h4><i class="fa fa-paint-brush"></i> 主题设置</h4>
+        <button type="button" class="close" ng-click="toggleThemePanel()">&times;</button>
+    </div>
+    <div class="panel-body">
+        <div class="form-group">
+            <label>切换模式</label>
+            <select class="form-control" ng-model="themeMode" ng-change="setThemeMode(themeMode)">
+                <option value="manual">手动切换</option>
+                <option value="system">跟随系统</option>
+                <option value="time">跟随时间</option>
+            </select>
+        </div>
+        <div class="form-group" ng-show="themeMode === 'manual'">
+            <label>选择主题</label>
+            <div class="theme-options">
+                <button type="button" class="btn"
+                        ng-class="{'btn-primary': currentTheme === 'light', 'btn-default': currentTheme !== 'light'}"
+                        ng-click="setTheme('light')">
+                    <i class="fa fa-sun-o"></i> 浅色
+                </button>
+                <button type="button" class="btn"
+                        ng-class="{'btn-primary': currentTheme === 'dark', 'btn-default': currentTheme !== 'dark'}"
+                        ng-click="setTheme('dark')">
+                    <i class="fa fa-moon-o"></i> 深色
+                </button>
+            </div>
+        </div>
+        <div class="theme-tips" ng-show="themeMode === 'system'">
+            <small><i class="fa fa-info-circle"></i> 将跟随您操作系统的深色模式设置</small>
+        </div>
+        <div class="theme-tips" ng-show="themeMode === 'time'">
+            <small><i class="fa fa-info-circle"></i> 白天(6:00-18:00)使用浅色模式，夜间自动切换深色模式</small>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑消息模态框 -->
+<div class="modal-overlay" ng-if="showEditModal" ng-click="closeEditModal()"></div>
+<div class="edit-modal" ng-show="showEditModal">
+    <div class="edit-modal-header">
+        <h4><i class="fa fa-edit"></i> 编辑消息</h4>
+        <button type="button" class="close" ng-click="closeEditModal()">&times;</button>
+    </div>
+    <div class="edit-modal-body">
+        <div class="edit-tips" ng-if="editTimeRemaining > 0">
+            <i class="fa fa-clock-o"></i> 剩余编辑时间: {{ editTimeRemaining }}秒
+        </div>
+        <div class="edit-tips edit-expired" ng-if="editTimeRemaining <= 0">
+            <i class="fa fa-exclamation-triangle"></i> 编辑时限已过
+        </div>
+        <textarea id="editMessageInput"
+                  class="form-control"
+                  ng-model="editingContent"
+                  rows="4"
+                  placeholder="输入新消息内容..."
+                  ng-disabled="editTimeRemaining <= 0"></textarea>
+    </div>
+    <div class="edit-modal-footer">
+        <button type="button" class="btn btn-default" ng-click="closeEditModal()">
+            取消
+        </button>
+        <button type="button" class="btn btn-primary" ng-click="confirmEdit()" ng-disabled="editTimeRemaining <= 0">
+            <i class="fa fa-check"></i> 保存修改
+        </button>
+    </div>
+</div>
+
+<!-- 文件预览模态框 -->
+<div class="preview-overlay" ng-if="showPreview" ng-click="closePreview()"></div>
+<div class="preview-modal" ng-show="showPreview">
+    <div class="preview-header">
+        <h4><i class="fa fa-file-o"></i> {{ previewFile.filename }}</h4>
+        <button type="button" class="close" ng-click="closePreview()">&times;</button>
+    </div>
+    <div class="preview-body">
+        <!-- 图片预览 -->
+        <div ng-if="previewFile.type === 'image'" class="preview-image-container">
+            <img ng-src="{{ getPreviewUrl() }}" alt="{{ previewFile.filename }}">
+        </div>
+        
+        <!-- PDF 预览 -->
+        <div ng-if="previewFile.type === 'pdf'" class="preview-pdf-container">
+            <pdf-viewer url="getPreviewUrl()"></pdf-viewer>
+        </div>
+        
+        <!-- 音频预览 -->
+        <div ng-if="previewFile.type === 'audio'" class="preview-audio-container">
+            <audio-player src="getPreviewUrl()"></audio-player>
+        </div>
+        
+        <!-- 文档预览 -->
+        <div ng-if="previewFile.type === 'document'" class="preview-document">
+            <i class="fa fa-file-text-o"></i>
+            <p class="document-name">{{ previewFile.filename }}</p>
+            <p class="document-size" ng-if="previewFile.size">大小: {{ previewFile.size }}</p>
+        </div>
+    </div>
+    <div class="preview-footer">
+        <button type="button" class="btn btn-default" ng-click="closePreview()">
+            关闭
+        </button>
+        <a class="btn btn-primary" ng-href="{{ getPreviewUrl() }}" download="{{ previewFile.filename }}">
+            <i class="fa fa-download"></i> 下载
+        </a>
+    </div>
+</div>
 

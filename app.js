@@ -390,6 +390,15 @@ ios.on('connection', function(socket){
 					burnDuration
 				);
 				
+				db.markMessageDelivered(messageId).then(function() {
+					ios.sockets.in(data.roomCode).emit('message-delivered', {
+						messageId: messageId,
+						roomCode: data.roomCode
+					});
+				}).catch(function(err) {
+					logger.error('[Socket-MessageStatus] 标记消息送达失败:', err);
+				});
+				
 				if (isBurnAfterReading) {
 					io.to(data.roomCode).emit('new burn message', {
 						username: data.username,
@@ -420,6 +429,146 @@ ios.on('connection', function(socket){
 				callback({ success:false});
 			}
 		}		
+	});
+
+	socket.on('edit-message', function(data, callback) {
+		if (!socket.username || !socket.roomCode) {
+			callback({success: false, message: '参数错误'});
+			return;
+		}
+
+		var messageId = parseInt(data.messageId);
+		var newContent = data.newContent;
+		var roomCode = socket.roomCode;
+		var username = socket.username;
+
+		if (!messageId || !newContent) {
+			callback({success: false, message: '参数不完整'});
+			return;
+		}
+
+		var timeLimit = 5 * 60 * 1000;
+
+		db.getEditableMessage(messageId, username, timeLimit).then(function(result) {
+			if (!result) {
+				callback({success: false, message: '消息不存在'});
+				return Promise.reject(new Error('not found'));
+			}
+
+			if (!result.editable) {
+				callback({success: false, message: '消息已超过5分钟编辑时限'});
+				return Promise.reject(new Error('expired'));
+			}
+
+			return db.saveEditHistory(messageId, result.message.message_content);
+		}).then(function() {
+			return db.editMessage(messageId, newContent);
+		}).then(function(updated) {
+			if (updated) {
+				ios.sockets.in(roomCode).emit('message-edited', {
+					messageId: messageId,
+					newContent: newContent,
+					editor: username
+				});
+
+				logger.info('[Socket-Edit] 用户 ' + username + ' 编辑了消息 ' + messageId);
+				callback({success: true});
+			} else {
+				callback({success: false, message: '编辑失败'});
+			}
+		}).catch(function(err) {
+			if (err.message !== 'not found' && err.message !== 'expired') {
+				logger.error('[Socket-Edit] 编辑消息失败:', err);
+				callback({success: false, message: '编辑失败'});
+			}
+		});
+	});
+
+	socket.on('recall-message', function(data, callback) {
+		if (!socket.username || !socket.roomCode) {
+			callback({success: false, message: '参数错误'});
+			return;
+		}
+
+		var messageId = parseInt(data.messageId);
+		var roomCode = socket.roomCode;
+		var username = socket.username;
+
+		if (!messageId) {
+			callback({success: false, message: '消息ID不能为空'});
+			return;
+		}
+
+		db.recallMessage(messageId, username).then(function(recalled) {
+			if (recalled) {
+				ios.sockets.in(roomCode).emit('message-recalled', {
+					messageId: messageId,
+					recaller: username
+				});
+
+				logger.info('[Socket-Recall] 用户 ' + username + ' 撤回了消息 ' + messageId);
+				callback({success: true});
+			} else {
+				callback({success: false, message: '消息不存在或已被撤回'});
+			}
+		}).catch(function(err) {
+			logger.error('[Socket-Recall] 撤回消息失败:', err);
+			callback({success: false, message: '撤回失败'});
+		});
+	});
+
+	socket.on('mark-messages-read', function(data, callback) {
+		if (!socket.username || !socket.roomCode) {
+			if (callback) callback({success: false, message: '参数错误'});
+			return;
+		}
+
+		var roomCode = socket.roomCode;
+		var username = socket.username;
+
+		db.markMessagesRead(roomCode, username).then(function(count) {
+			ios.sockets.in(roomCode).emit('message-read', {
+				reader: username,
+				roomCode: roomCode,
+				count: count
+			});
+
+			logger.info('[Socket-MessageStatus] 用户 ' + username + ' 查看了房间 ' + roomCode + ' 的消息');
+			if (callback) callback({success: true, count: count});
+		}).catch(function(err) {
+			logger.error('[Socket-MessageStatus] 批量标记已读失败:', err);
+			if (callback) callback({success: false, message: '标记已读失败'});
+		});
+	});
+
+	socket.on('view-message', function(data, callback) {
+		if (!socket.username || !socket.roomCode) {
+			if (callback) callback({success: false, message: '参数错误'});
+			return;
+		}
+
+		var messageId = parseInt(data.messageId);
+		var roomCode = socket.roomCode;
+		var username = socket.username;
+
+		if (!messageId) {
+			if (callback) callback({success: false, message: '消息ID不能为空'});
+			return;
+		}
+
+		db.markMessageRead(messageId, username).then(function() {
+			ios.sockets.in(roomCode).emit('message-read', {
+				messageId: messageId,
+				reader: username,
+				roomCode: roomCode
+			});
+
+			logger.info('[Socket-MessageStatus] 用户 ' + username + ' 查看了消息 ' + messageId);
+			if (callback) callback({success: true});
+		}).catch(function(err) {
+			logger.error('[Socket-MessageStatus] 标记消息已读失败:', err);
+			if (callback) callback({success: false, message: '标记已读失败'});
+		});
 	});
 	socket.on('remove-meme', function(data, callback){
 		if (nickname[data.username]) {
@@ -842,3 +991,122 @@ function formatTime(date) {
     minutes = minutes < 10 ? '0' + minutes : minutes;
     return hours + ':' + minutes + ' ' + ampm;
 }
+
+// 消息搜索 API
+app.get('/api/search-messages', async function(req, res) {
+    try {
+        var keyword = req.query.keyword || '';
+        var roomCode = req.query.roomCode || null;
+        var startDate = req.query.startDate || null;
+        var endDate = req.query.endDate || null;
+        var page = parseInt(req.query.page) || 1;
+        var pageSize = Math.min(parseInt(req.query.pageSize) || 20, 50);
+
+        if (!keyword || keyword.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                error: '关键词不能为空'
+            });
+        }
+
+        var result = await db.searchMessages({
+            keyword: keyword.trim(),
+            roomCode: roomCode,
+            startDate: startDate,
+            endDate: endDate,
+            page: page,
+            pageSize: pageSize
+        });
+
+        res.json({
+            success: true,
+            messages: result.messages,
+            total: result.total,
+            page: result.page,
+            pageSize: result.pageSize,
+            hasMore: result.hasMore
+        });
+
+        logger.info('[Search] 搜索消息: 关键词=' + keyword + ', 房间=' + (roomCode || '全部') + ', 结果数=' + result.total);
+    } catch (error) {
+        logger.error('[Search] 搜索失败:', error);
+        res.status(500).json({
+            success: false,
+            error: '搜索失败'
+        });
+    }
+});
+
+// 编辑消息 API
+app.post('/api/edit-message', async function(req, res) {
+    try {
+        var messageId = parseInt(req.body.messageId);
+        var username = req.body.username;
+        var newContent = req.body.newContent;
+        var roomCode = req.body.roomCode;
+
+        if (!messageId || !username || !newContent) {
+            return res.status(400).json({ success: false, error: '参数不完整' });
+        }
+
+        var timeLimit = 5 * 60 * 1000;
+        var result = await db.getEditableMessage(messageId, username, timeLimit);
+
+        if (!result) {
+            return res.status(404).json({ success: false, error: '消息不存在' });
+        }
+
+        if (!result.editable) {
+            return res.status(403).json({ success: false, error: '消息已超过5分钟编辑时限' });
+        }
+
+        await db.saveEditHistory(messageId, result.message.message_content);
+        var updated = await db.editMessage(messageId, newContent);
+
+        if (updated) {
+            ios.sockets.in(roomCode).emit('message-edited', {
+                messageId: messageId,
+                newContent: newContent,
+                editor: username
+            });
+
+            logger.info('[Edit] 用户 ' + username + ' 编辑了消息 ' + messageId);
+            res.json({ success: true });
+        } else {
+            res.status(400).json({ success: false, error: '编辑失败' });
+        }
+    } catch (error) {
+        logger.error('[Edit] 编辑消息失败:', error);
+        res.status(500).json({ success: false, error: '编辑失败' });
+    }
+});
+
+// 撤回消息 API
+app.post('/api/recall-message', async function(req, res) {
+    try {
+        var messageId = parseInt(req.body.messageId);
+        var username = req.body.username;
+        var roomCode = req.body.roomCode;
+
+        if (!messageId || !username || !roomCode) {
+            return res.status(400).json({ success: false, error: '参数不完整' });
+        }
+
+        var recalled = await db.recallMessage(messageId, username);
+
+        if (recalled) {
+            ios.sockets.in(roomCode).emit('message-recalled', {
+                messageId: messageId,
+                recaller: username
+            });
+
+            logger.info('[Recall] 用户 ' + username + ' 撤回了消息 ' + messageId);
+            res.json({ success: true });
+        } else {
+            res.status(400).json({ success: false, error: '消息不存在或已被撤回' });
+        }
+    } catch (error) {
+        logger.error('[Recall] 撤回消息失败:', error);
+        res.status(500).json({ success: false, error: '撤回失败' });
+    }
+});
