@@ -59,7 +59,8 @@ function initDatabase() {
                         file_info TEXT,
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                         is_burn_after_reading INTEGER DEFAULT 0,
-                        burn_duration INTEGER DEFAULT 10
+                        burn_duration INTEGER DEFAULT 10,
+                        status TEXT DEFAULT 'normal'
                     )
                 `);
 
@@ -67,6 +68,10 @@ function initDatabase() {
                     CREATE INDEX IF NOT EXISTS idx_room_created
                     ON chat_messages(room_code, created_at DESC)
                 `);
+
+                db.run('CREATE INDEX IF NOT EXISTS idx_messages_content ON chat_messages(message_content)');
+
+                db.run('CREATE INDEX IF NOT EXISTS idx_messages_created_at ON chat_messages(created_at)');
 
                 db.run('SELECT is_burn_after_reading FROM chat_messages LIMIT 1', function(err, row) {
                     if (err && err.message.includes('no such column')) {
@@ -76,10 +81,33 @@ function initDatabase() {
                     }
                 });
 
+                runMessageMigrations();
+
                 logger.info('Database', '数据库表初始化完成');
                 resolve(db);
             });
         });
+    });
+}
+
+function runMessageMigrations() {
+    db.run('SELECT status FROM chat_messages LIMIT 1', function(err) {
+        if (err && err.message.includes('no such column: status')) {
+            db.run('ALTER TABLE chat_messages ADD COLUMN status TEXT DEFAULT \'normal\'', function() {
+                logger.info('Database', '已添加消息状态字段');
+            });
+        }
+    });
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS message_edit_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message_id INTEGER NOT NULL,
+            old_content TEXT,
+            edited_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `, function() {
+        logger.info('Database', '消息编辑历史表已创建');
     });
 }
 
@@ -261,6 +289,195 @@ function saveMessageWithBurn(roomCode, username, userAvatar, messageType, messag
     });
 }
 
+function getEditableMessage(messageId, username, timeLimit) {
+    return new Promise((resolve, reject) => {
+        var sql = `
+            SELECT * FROM chat_messages 
+            WHERE id = ? AND username = ? AND status = 'normal'
+        `;
+
+        db.get(sql, [messageId, username], function(err, row) {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            if (!row) {
+                resolve(null);
+                return;
+            }
+
+            var createdAt = new Date(row.created_at).getTime();
+            var now = Date.now();
+            var elapsed = now - createdAt;
+
+            if (elapsed > timeLimit) {
+                resolve({ message: row, editable: false, timeRemaining: 0 });
+            } else {
+                resolve({ message: row, editable: true, timeRemaining: timeLimit - elapsed });
+            }
+        });
+    });
+}
+
+function editMessage(messageId, newContent) {
+    return new Promise((resolve, reject) => {
+        var sql = `
+            UPDATE chat_messages 
+            SET message_content = ?, status = 'edited'
+            WHERE id = ? AND status = 'normal'
+        `;
+
+        db.run(sql, [newContent, messageId], function(err) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(this.changes > 0);
+        });
+    });
+}
+
+function saveEditHistory(messageId, oldContent) {
+    return new Promise((resolve, reject) => {
+        var sql = `
+            INSERT INTO message_edit_history (message_id, old_content, edited_at)
+            VALUES (?, ?, datetime('now'))
+        `;
+
+        db.run(sql, [messageId, oldContent], function(err) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(this.lastID);
+        });
+    });
+}
+
+function recallMessage(messageId, username) {
+    return new Promise((resolve, reject) => {
+        var sql = `
+            UPDATE chat_messages 
+            SET status = 'recalled'
+            WHERE id = ? AND username = ? AND status = 'normal'
+        `;
+
+        db.run(sql, [messageId, username], function(err) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(this.changes > 0);
+        });
+    });
+}
+
+function searchMessages(options) {
+    return new Promise((resolve, reject) => {
+        var keyword = options.keyword || '';
+        var roomCode = options.roomCode || null;
+        var startDate = options.startDate || null;
+        var endDate = options.endDate || null;
+        var page = parseInt(options.page) || 1;
+        var pageSize = Math.min(parseInt(options.pageSize) || 20, 50);
+
+        var sql = 'SELECT * FROM chat_messages WHERE 1=1';
+        var countSql = 'SELECT COUNT(*) as total FROM chat_messages WHERE 1=1';
+        var params = [];
+        var countParams = [];
+
+        if (keyword) {
+            sql += ' AND message_content LIKE ?';
+            countSql += ' AND message_content LIKE ?';
+            params.push('%' + keyword + '%');
+            countParams.push('%' + keyword + '%');
+        }
+
+        if (roomCode) {
+            sql += ' AND room_code = ?';
+            countSql += ' AND room_code = ?';
+            params.push(roomCode);
+            countParams.push(roomCode);
+        }
+
+        if (startDate) {
+            sql += ' AND created_at >= ?';
+            countSql += ' AND created_at >= ?';
+            params.push(startDate);
+            countParams.push(startDate);
+        }
+
+        if (endDate) {
+            sql += ' AND created_at <= ?';
+            countSql += ' AND created_at <= ?';
+            params.push(endDate);
+            countParams.push(endDate);
+        }
+
+        sql += ' ORDER BY created_at DESC';
+
+        var offset = (page - 1) * pageSize;
+        sql += ' LIMIT ? OFFSET ?';
+        params.push(pageSize, offset);
+
+        db.get(countSql, countParams, function(err, countRow) {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            var total = countRow ? countRow.total : 0;
+
+            db.all(sql, params, function(err, rows) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                var messages = rows.map(function(msg) {
+                    var highlightedContent = msg.message_content;
+                    if (keyword) {
+                        var regex = new RegExp('(' + keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                        highlightedContent = msg.message_content.replace(regex, '<mark>$1</mark>');
+                    }
+
+                    return {
+                        id: msg.id,
+                        roomCode: msg.room_code,
+                        username: msg.username,
+                        userAvatar: msg.user_avatar,
+                        messageType: msg.message_type,
+                        messageContent: msg.message_content,
+                        highlightedContent: highlightedContent,
+                        fileInfo: msg.file_info ? JSON.parse(msg.file_info) : null,
+                        createdAt: msg.created_at,
+                        msgTime: formatTime(new Date(msg.created_at))
+                    };
+                });
+
+                resolve({
+                    messages: messages,
+                    total: total,
+                    page: page,
+                    pageSize: pageSize,
+                    hasMore: offset + rows.length < total
+                });
+            });
+        });
+    });
+}
+
+function formatTime(date) {
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    var ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    return hours + ':' + minutes + ' ' + ampm;
+}
+
 module.exports = {
     initDatabase: initDatabase,
     saveMessage: saveMessage,
@@ -272,5 +489,10 @@ module.exports = {
     getMessagesForExport: getMessagesForExport,
     deleteBurnAfterReadingMessage: deleteBurnAfterReadingMessage,
     getBurnAfterReadingMessage: getBurnAfterReadingMessage,
-    saveMessageWithBurn: saveMessageWithBurn
+    saveMessageWithBurn: saveMessageWithBurn,
+    searchMessages: searchMessages,
+    getEditableMessage: getEditableMessage,
+    editMessage: editMessage,
+    saveEditHistory: saveEditHistory,
+    recallMessage: recallMessage
 };

@@ -46,7 +46,7 @@ angular.module('Controllers')
         }
     };
 })
-.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService, $translate, $sce, roomManagementService, gifService, burnAfterReadingService, chatExportService, chatHistoryCacheService){		// Chat Page Controller
+.controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService, $translate, $sce, roomManagementService, gifService, burnAfterReadingService, chatExportService, chatHistoryCacheService, themeService, searchService, messageEditService){		// Chat Page Controller
 	// Varialbles Initialization.
 	$scope.isMsgBoxEmpty = false;
 	$scope.isFileSelected = false;
@@ -63,13 +63,213 @@ angular.module('Controllers')
 	console.log("inicializando variables...");
 	$scope.autoScroll = true;
 	
+	// 主题相关变量
+	$scope.currentTheme = 'light';
+	$scope.themeMode = 'manual';
+	$scope.showThemePanel = false;
+	
 	// 阅后即焚相关变量
 	$scope.burnModeEnabled = false;
 	$scope.burnMessages = {};
 	$scope.burnTimers = {};
-	
+
+	// 编辑/撤回相关变量
+	$scope.editingMessage = null;
+	$scope.editingContent = '';
+	$scope.editTimeRemaining = 0;
+	$scope.showEditModal = false;
+	$scope.editTimer = null;
+
 	var burnConfig = burnAfterReadingService.getConfig();
 	$scope.burnModeEnabled = burnConfig.enabled;
+	
+	// 初始化主题
+	$scope.initTheme = function() {
+		var config = themeService.getConfig();
+		$scope.themeMode = config.mode;
+		$scope.currentTheme = themeService.getCurrentTheme();
+	};
+	
+	// 切换主题面板显示
+	$scope.toggleThemePanel = function() {
+		$scope.showThemePanel = !$scope.showThemePanel;
+	};
+	
+	// 设置主题模式
+	$scope.setThemeMode = function(mode) {
+		$scope.themeMode = mode;
+		themeService.setMode(mode);
+		$scope.currentTheme = themeService.getCurrentTheme();
+	};
+	
+	// 手动设置主题
+	$scope.setTheme = function(theme) {
+		themeService.setTheme(theme);
+		$scope.currentTheme = theme;
+	};
+	
+	// 控制器销毁时清理资源
+	$scope.$on('$destroy', function() {
+		themeService.destroy();
+	});
+	
+	// 初始化主题
+	$scope.initTheme();
+
+	// ========== 搜索功能 ==========
+	$scope.showSearch = false;
+	$scope.searchKeyword = '';
+	$scope.searchResults = [];
+	$scope.searchRoom = '';
+	$scope.searchStartDate = '';
+	$scope.searchEndDate = '';
+	$scope.searchPage = 1;
+	$scope.searchHasMore = false;
+	$scope.isSearching = false;
+	$scope.searchTotal = 0;
+
+	$scope.showSearchPanel = function() {
+		$scope.showSearch = true;
+		$scope.searchKeyword = '';
+		$scope.searchResults = [];
+		$scope.searchPage = 1;
+		$scope.searchHasMore = false;
+		$scope.searchTotal = 0;
+		$scope.searchRoom = $rootScope.roomCode || '';
+	};
+
+	$scope.closeSearch = function() {
+		$scope.showSearch = false;
+		$scope.searchKeyword = '';
+		$scope.searchResults = [];
+		$scope.searchPage = 1;
+		$scope.searchHasMore = false;
+	};
+
+	$scope.doSearch = function() {
+		if (!$scope.searchKeyword || $scope.searchKeyword.trim() === '') {
+			alert('请输入搜索关键词');
+			return;
+		}
+
+		$scope.isSearching = true;
+		$scope.searchPage = 1;
+
+		searchService.searchMessages({
+			keyword: $scope.searchKeyword.trim(),
+			roomCode: $scope.searchRoom || null,
+			startDate: $scope.searchStartDate || null,
+			endDate: $scope.searchEndDate || null,
+			page: 1,
+			pageSize: 20
+		}).then(function(result) {
+			$scope.isSearching = false;
+			if (result.success) {
+				$scope.searchResults = result.messages;
+				$scope.searchTotal = result.total;
+				$scope.searchHasMore = result.hasMore;
+				$scope.searchPage = 1;
+			} else {
+				alert(result.error || '搜索失败');
+				$scope.searchResults = [];
+				$scope.searchTotal = 0;
+			}
+		}).catch(function(error) {
+			$scope.isSearching = false;
+			console.error('搜索失败:', error);
+			alert('搜索请求失败');
+			$scope.searchResults = [];
+		});
+	};
+
+	$scope.prevSearchPage = function() {
+		if ($scope.searchPage <= 1) return;
+
+		$scope.isSearching = true;
+		var newPage = $scope.searchPage - 1;
+
+		searchService.searchMessages({
+			keyword: $scope.searchKeyword.trim(),
+			roomCode: $scope.searchRoom || null,
+			startDate: $scope.searchStartDate || null,
+			endDate: $scope.searchEndDate || null,
+			page: newPage,
+			pageSize: 20
+		}).then(function(result) {
+			$scope.isSearching = false;
+			if (result.success) {
+				$scope.searchResults = result.messages;
+				$scope.searchHasMore = result.hasMore;
+				$scope.searchPage = newPage;
+				$timeout(function() {
+					var panel = document.querySelector('.search-results-panel');
+					if (panel) panel.scrollTop = 0;
+				}, 100);
+			}
+		}).catch(function(error) {
+			$scope.isSearching = false;
+			console.error('加载上一页失败:', error);
+		});
+	};
+
+	$scope.nextSearchPage = function() {
+		if (!$scope.searchHasMore) return;
+
+		$scope.isSearching = true;
+		var newPage = $scope.searchPage + 1;
+
+		searchService.searchMessages({
+			keyword: $scope.searchKeyword.trim(),
+			roomCode: $scope.searchRoom || null,
+			startDate: $scope.searchStartDate || null,
+			endDate: $scope.searchEndDate || null,
+			page: newPage,
+			pageSize: 20
+		}).then(function(result) {
+			$scope.isSearching = false;
+			if (result.success) {
+				$scope.searchResults = result.messages;
+				$scope.searchHasMore = result.hasMore;
+				$scope.searchPage = newPage;
+				$timeout(function() {
+					var panel = document.querySelector('.search-results-panel');
+					if (panel) panel.scrollTop = 0;
+				}, 100);
+			}
+		}).catch(function(error) {
+			$scope.isSearching = false;
+			console.error('加载下一页失败:', error);
+		});
+	};
+
+	$scope.goToMessage = function(message) {
+		$scope.closeSearch();
+		$timeout(function() {
+			var targetElement = document.querySelector('[data-message-id="' + message.id + '"]');
+			if (targetElement) {
+				targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				targetElement.classList.add('search-target');
+				setTimeout(function() {
+					targetElement.classList.remove('search-target');
+				}, 2000);
+			} else {
+				console.log('未找到消息元素:', message.id);
+			}
+		}, 100);
+	};
+
+	$scope.searchByEnter = function(event) {
+		if (event.which === 13) {
+			$scope.doSearch();
+		}
+	};
+
+	$scope.clearSearch = function() {
+		$scope.searchKeyword = '';
+		$scope.searchResults = [];
+		$scope.searchTotal = 0;
+		$scope.searchHasMore = false;
+	};
 	
 	// ========== 导出聊天记录功能 ==========
 	$scope.showExportModal = function() {
@@ -154,7 +354,7 @@ angular.module('Controllers')
 			clearTimeout($scope.burnTimers[messageId]);
 			delete $scope.burnTimers[messageId];
 		}
-		
+
 		var msgElement = document.querySelector('[data-message-id="' + messageId + '"]');
 		if (msgElement) {
 			msgElement.classList.add('burning');
@@ -162,7 +362,7 @@ angular.module('Controllers')
 				msgElement.remove();
 			}, 500);
 		}
-		
+
 		$http.post('/api/burn-message', { messageId: messageId })
 			.then(function(response) {
 				console.log('阅后即焚消息已销毁:', messageId);
@@ -171,7 +371,100 @@ angular.module('Controllers')
 				console.error('销毁阅后即焚消息失败:', error);
 			});
 	};
-	
+
+	// ========== 消息编辑/撤回功能 ==========
+	$scope.showEditDialog = function(message) {
+		if (!messageEditService.canEdit(message)) {
+			alert('该消息已超过5分钟编辑时限');
+			return;
+		}
+
+		$scope.editingMessage = message;
+		$scope.editingContent = message.msg || message.messageContent || '';
+		$scope.showEditModal = true;
+
+		$timeout(function() {
+			var editInput = document.getElementById('editMessageInput');
+			if (editInput) {
+				editInput.focus();
+			}
+		}, 100);
+
+		$scope.updateEditTimeRemaining(message);
+	};
+
+	$scope.updateEditTimeRemaining = function(message) {
+		if ($scope.editTimer) {
+			clearInterval($scope.editTimer);
+		}
+
+		$scope.editTimer = setInterval(function() {
+			$scope.$apply(function() {
+				$scope.editTimeRemaining = messageEditService.getTimeRemaining(message);
+				if ($scope.editTimeRemaining <= 0) {
+					$scope.closeEditModal();
+				}
+			});
+		}, 1000);
+	};
+
+	$scope.closeEditModal = function() {
+		$scope.showEditModal = false;
+		$scope.editingMessage = null;
+		$scope.editingContent = '';
+		$scope.editTimeRemaining = 0;
+
+		if ($scope.editTimer) {
+			clearInterval($scope.editTimer);
+			$scope.editTimer = null;
+		}
+	};
+
+	$scope.confirmEdit = function() {
+		if (!$scope.editingMessage || !$scope.editingContent.trim()) {
+			alert('消息内容不能为空');
+			return;
+		}
+
+		var messageId = $scope.editingMessage.id || $scope.editingMessage.messageId;
+		var newContent = $scope.editingContent.trim();
+
+		messageEditService.editMessageSocket(messageId, newContent)
+			.then(function() {
+				$scope.closeEditModal();
+			})
+			.catch(function(error) {
+				alert('编辑失败: ' + error.message);
+			});
+	};
+
+	$scope.recallMessage = function(message) {
+		if (!confirm('确定要撤回这条消息吗？')) {
+			return;
+		}
+
+		var messageId = message.id || message.messageId;
+
+		messageEditService.recallMessageSocket(messageId)
+			.then(function() {
+				console.log('消息已撤回');
+			})
+			.catch(function(error) {
+				alert('撤回失败: ' + error.message);
+			});
+	};
+
+	$scope.canEditMessage = function(message) {
+		return messageEditService.canEdit(message);
+	};
+
+	$scope.canRecallMessage = function(message) {
+		return messageEditService.canRecall(message);
+	};
+
+	// 注册 Socket 事件监听
+	messageEditService.registerEventListeners($scope);
+
 	// 管理功能变量
 	$scope.mutedUsers = [];
 	$rootScope.isRoomCreator = false;
@@ -1191,6 +1484,32 @@ $scope.sendCode = function(){
 	
 	$socket.on("message-burned", function(data) {
 		$scope.destroyBurnMessage(data.messageId);
+		$scope.$apply();
+	});
+
+	$socket.on("message-edited", function(data) {
+		for (var i = 0; i < $scope.messeges.length; i++) {
+			var msg = $scope.messeges[i];
+			if (msg.id == data.messageId || msg.messageId == data.messageId) {
+				msg.msg = data.newContent;
+				msg.messageContent = data.newContent;
+				msg.status = 'edited';
+				msg.editedAt = new Date().toISOString();
+				break;
+			}
+		}
+		$scope.$apply();
+	});
+
+	$socket.on("message-recalled", function(data) {
+		for (var i = 0; i < $scope.messeges.length; i++) {
+			var msg = $scope.messeges[i];
+			if (msg.id == data.messageId || msg.messageId == data.messageId) {
+				msg.status = 'recalled';
+				msg.recalledAt = new Date().toISOString();
+				break;
+			}
+		}
 		$scope.$apply();
 	});
 	
