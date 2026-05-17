@@ -374,21 +374,27 @@ ios.on('connection', function(socket){
 				var isBurnAfterReading = data.isBurnAfterReading ? 1 : 0;
 				var burnDuration = data.burnDuration || 10;
 				
-				var stmt = db.prepare('INSERT INTO messages (id, username, userAvatar, msg, msgTime, roomCode, isImageMSG, isMeme, isGif, createdAt, isBurnAfterReading, burnDuration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-				stmt.run(
-					messageId,
+				// 保存消息到数据库
+				var messageType = data.isImageMSG ? 'image' : data.isMeme ? 'meme' : data.isGif ? 'gif' : 'text';
+				var fileInfo = null;
+				
+				// 使用db.js提供的API保存消息
+				db.saveMessageWithBurn(
+					data.roomCode,
 					data.username,
 					data.userAvatar,
+					messageType,
 					data.msg,
-					data.msgTime,
-					data.roomCode,
-					data.isImageMSG ? 1 : 0,
-					data.isMeme ? 1 : 0,
-					data.isGif ? 1 : 0,
-					new Date().toISOString(),
-					isBurnAfterReading,
-					burnDuration
-				);
+					fileInfo,
+					data.isBurnAfterReading,
+					data.burnDuration
+				).then(function(savedMessageId) {
+					// 消息保存成功
+					console.log('消息已保存，ID:', savedMessageId);
+				}).catch(function(err) {
+					// 消息保存失败
+					console.error('保存消息失败:', err);
+				});
 				
 				db.markMessageDelivered(messageId).then(function() {
 					ios.sockets.in(data.roomCode).emit('message-delivered', {
@@ -410,8 +416,24 @@ ios.on('connection', function(socket){
 						messageId: messageId
 					});
 				} else {
-					ios.sockets.emit('new message', data);
-				}
+						// 构建完整的消息对象，包含messageId等必要属性
+						var messageData = {
+							username: data.username,
+							userAvatar: data.userAvatar,
+							msg: data.msg,
+							msgTime: data.msgTime,
+							isImageMSG: data.isImageMSG,
+							isMeme: data.isMeme,
+							isGif: data.isGif,
+							roomCode: data.roomCode,
+							hasMsg: data.hasMsg,
+							hasFile: data.hasFile,
+							mentions: data.mentions,
+							replyTo: data.replyTo,
+							messageId: messageId
+						};
+						ios.sockets.emit('new message', messageData);
+					}
 				
 				callback({success: true});
 			}else if(data.hasFile){

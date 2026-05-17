@@ -6,7 +6,7 @@
 
 'use strict';
 
-app.factory('searchService', ['$http', '$rootScope', function($http, $rootScope) {
+angular.module('Services').factory('searchService', ['$http', '$rootScope', function($http, $rootScope) {
     var service = {};
 
     service.searchMessages = function(params) {

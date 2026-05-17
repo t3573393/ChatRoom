@@ -1,4 +1,4 @@
-angular.module('app')
+angular.module('Controllers')
 .directive('pdfViewer', [function() {
     return {
         restrict: 'E',
@@ -55,31 +55,11 @@ angular.module('app')
                     return;
                 }
                 
-                scope.loading = true;
-                scope.error = null;
-                
-                if (typeof pdfjsLib !== 'undefined') {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.worker.min.js';
-                    
-                    pdfjsLib.getDocument(url).promise.then(function(pdf) {
-                        pdfDoc = pdf;
-                        scope.$apply(function() {
-                            scope.totalPages = pdf.numPages;
-                            scope.loading = false;
-                        });
-                        scope.renderPage(scope.currentPage);
-                    }).catch(function(err) {
-                        scope.$apply(function() {
-                            scope.loading = false;
-                            scope.error = 'PDF 加载失败: ' + err.message;
-                        });
-                    });
-                } else {
-                    scope.$apply(function() {
-                        scope.loading = false;
-                        scope.error = 'PDF.js 库未加载';
-                    });
-                }
+                // PDF.js功能暂时禁用，因为CDN资源无法访问
+                scope.$apply(function() {
+                    scope.loading = false;
+                    scope.error = 'PDF.js功能暂时不可用';
+                });
             };
             
             scope.renderPage = function(pageNum) {

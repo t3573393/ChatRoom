@@ -42,6 +42,8 @@ App.controller('myCtrl', ['$translate', function ($translate) {
     });
     // 设置默认的语言
     $translateProvider.preferredLanguage('zh');
+    // 添加消毒策略，防止XSS攻击
+    $translateProvider.useSanitizeValueStrategy('escape');
   });
 
 if(window.Notification && Notification.permission !== "denied") {

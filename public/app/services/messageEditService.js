@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('app')
+angular.module('Services')
 .service('messageEditService', ['$http', '$rootScope', '$socket', function($http, $rootScope, $socket) {
     var EDIT_TIME_LIMIT = 5 * 60 * 1000;
 

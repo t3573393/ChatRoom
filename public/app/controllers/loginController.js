@@ -1,4 +1,4 @@
-angular.module('Controllers',[])
+angular.module('Controllers',['Services'])
 .directive('focusMe', function($timeout) {	// Custom directive for focus
     return {
         link: function(scope, element, attrs) {

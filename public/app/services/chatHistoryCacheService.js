@@ -6,7 +6,7 @@
 
 'use strict';
 
-app.factory('chatHistoryCacheService', ['$rootScope', function($rootScope) {
+angular.module('Services').factory('chatHistoryCacheService', ['$rootScope', function($rootScope) {
     var service = {};
     
     var CACHE_KEY = 'chat_history_cache';

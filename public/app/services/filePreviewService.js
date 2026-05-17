@@ -1,4 +1,4 @@
-angular.module('app')
+angular.module('Services')
 .service('filePreviewService', ['$rootScope', function($rootScope) {
     var service = this;
     

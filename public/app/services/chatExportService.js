@@ -6,7 +6,7 @@
 
 'use strict';
 
-app.factory('chatExportService', ['$http', function($http) {
+angular.module('Services').factory('chatExportService', ['$http', function($http) {
     var service = {};
     
     /**

@@ -6,7 +6,7 @@
 
 'use strict';
 
-app.factory('gifService', ['$http', '$rootScope', function($http, $rootScope) {
+angular.module('Services').factory('gifService', ['$http', '$rootScope', function($http, $rootScope) {
     var service = {};
 
     // ========== 配置区域 ==========

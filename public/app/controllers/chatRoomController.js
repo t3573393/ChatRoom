@@ -582,15 +582,84 @@ angular.module('Controllers')
 		});
 	});
 	
-	// 加载聊天历史
-	$scope.loadHistory();
-	$scope.roomCode = $rootScope.roomCode;
-	$scope.mensajesNuevos = 0;
 	// 历史记录相关
 	$scope.hasMoreHistory = true;
 	$scope.isLoadingHistory = false;
 	$scope.oldestMessageId = null;
-	
+
+	// 加载聊天历史记录函数
+	$scope.loadHistory = function() {
+	    if ($scope.isLoadingHistory || !$scope.hasMoreHistory) {
+	        return;
+	    }
+
+	    $scope.isLoadingHistory = true;
+	    
+	    var url = $rootScope.baseUrl + '/v1/messages/' + $scope.roomCode;
+	    var params = {
+	        params: {
+	            pageSize: 20
+	        }
+	    };
+
+	    // 如果有最旧消息ID，获取更早的消息
+	    if ($scope.oldestMessageId) {
+	        params.params.beforeId = $scope.oldestMessageId;
+	    }
+
+	    $http.get(url, params)
+	        .then(function(response) {
+	            if (response.data.success) {
+	                var historyMessages = response.data.messages;
+	                
+	                // 反转消息顺序，确保按时间正序
+	                historyMessages.reverse();
+	                
+	                // 如果是首次加载，替换整个消息列表
+	                if (!$scope.oldestMessageId) {
+	                    $scope.messeges = historyMessages;
+	                    
+	                    // 首次加载后保存到本地缓存
+	                    if (historyMessages.length > 0) {
+	                        chatHistoryCacheService.cacheMessages($scope.roomCode, historyMessages);
+	                        console.log('已保存', historyMessages.length, '条消息到本地缓存');
+	                    }
+	                } else {
+	                    // 否则插入到列表开头
+	                    $scope.messeges = historyMessages.concat($scope.messeges);
+	                }
+	                
+	                // 更新最旧消息ID
+	                if (historyMessages.length > 0) {
+	                    $scope.oldestMessageId = historyMessages[0].id;
+	                }
+	                
+	                // 更新是否有更多消息
+	                $scope.hasMoreHistory = response.data.hasMore;
+	                
+	                // 滚动到加载的历史消息位置
+	                if (historyMessages.length > 0) {
+	                    $timeout(function() {
+	                        var targetElement = document.querySelector('[data-message-id="' + historyMessages[0].id + '"]');
+	                        if (targetElement) {
+	                            targetElement.scrollIntoView({ behavior: 'instant', block: 'start' });
+	                        }
+	                    }, 100);
+	                }
+	            }
+	            $scope.isLoadingHistory = false;
+	        })
+	        .catch(function(error) {
+	            console.error('加载历史消息失败:', error);
+	            $scope.isLoadingHistory = false;
+	        });
+	};
+
+	// 加载聊天历史
+	$scope.loadHistory();
+	$scope.roomCode = $rootScope.roomCode;
+	$scope.mensajesNuevos = 0;
+
 	// 从本地缓存加载最近的消息（快速显示）
 	var cachedMessages = chatHistoryCacheService.getCachedMessages($scope.roomCode);
 	if (cachedMessages && cachedMessages.length > 0) {
@@ -824,31 +893,34 @@ angular.module('Controllers')
 	
 // ==================================  MEMES  ===============================
 
+	// 控制表情包面板的显示/隐藏，默认为隐藏
+	$scope.showMemePanel = false;
+	
 	$scope.memes = [
-		{ id: 1, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f600.png", category: 'happy', name: '笑脸' },
-		{ id: 2, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f602.png", category: 'happy', name: '大笑' },
-		{ id: 3, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f60a.png", category: 'happy', name: '微笑' },
-		{ id: 4, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f970.png", category: 'happy', name: '亲亲' },
-		{ id: 5, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f60d.png", category: 'happy', name: '心动' },
-		{ id: 6, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f917.png", category: 'happy', name: '抱抱' },
-		{ id: 7, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f622.png", category: 'emotion', name: '大哭' },
-		{ id: 8, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f631.png", category: 'emotion', name: '惊恐' },
-		{ id: 9, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f624.png", category: 'emotion', name: '傲娇' },
-		{ id: 10, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f634.png", category: 'emotion', name: '晕菜' },
-		{ id: 11, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f60f.png", category: 'emotion', name: '疑问' },
-		{ id: 12, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f611.png", category: 'emotion', name: '冷漠' },
-		{ id: 13, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f44d.png", category: 'gesture', name: '点赞' },
-		{ id: 14, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f44e.png", category: 'gesture', name: '点踩' },
-		{ id: 15, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f44b.png", category: 'gesture', name: '挥手' },
-		{ id: 16, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f64c.png", category: 'gesture', name: '鼓掌' },
-		{ id: 17, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f91d.png", category: 'gesture', name: '握手' },
-		{ id: 18, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f44f.png", category: 'gesture', name: '击掌' },
-		{ id: 19, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/2764.png", category: 'objects', name: '爱心' },
-		{ id: 20, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f494.png", category: 'objects', name: '红心' },
-		{ id: 21, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/2b50.png", category: 'objects', name: '星星' },
-		{ id: 22, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f525.png", category: 'objects', name: '火焰' },
-		{ id: 23, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f4af.png", category: 'objects', name: '100分' },
-		{ id: 24, url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/128/1f389.png", category: 'objects', name: '庆祝' }
+		{ id: 1, emoji: "😀", category: 'happy', name: '笑脸' },
+		{ id: 2, emoji: "😂", category: 'happy', name: '大笑' },
+		{ id: 3, emoji: "🙂", category: 'happy', name: '微笑' },
+		{ id: 4, emoji: "😘", category: 'happy', name: '亲亲' },
+		{ id: 5, emoji: "😍", category: 'happy', name: '心动' },
+		{ id: 6, emoji: "🫂", category: 'happy', name: '抱抱' },
+		{ id: 7, emoji: "😭", category: 'emotion', name: '大哭' },
+		{ id: 8, emoji: "😱", category: 'emotion', name: '惊恐' },
+		{ id: 9, emoji: "😤", category: 'emotion', name: '傲娇' },
+		{ id: 10, emoji: "😴", category: 'emotion', name: '晕菜' },
+		{ id: 11, emoji: "🤔", category: 'emotion', name: '疑问' },
+		{ id: 12, emoji: "😑", category: 'emotion', name: '冷漠' },
+		{ id: 13, emoji: "👍", category: 'gesture', name: '点赞' },
+		{ id: 14, emoji: "👎", category: 'gesture', name: '点踩' },
+		{ id: 15, emoji: "👋", category: 'gesture', name: '挥手' },
+		{ id: 16, emoji: "👏", category: 'gesture', name: '鼓掌' },
+		{ id: 17, emoji: "🤝", category: 'gesture', name: '握手' },
+		{ id: 18, emoji: "🙏", category: 'gesture', name: '击掌' },
+		{ id: 19, emoji: "❤️", category: 'objects', name: '爱心' },
+		{ id: 20, emoji: "💔", category: 'objects', name: '红心' },
+		{ id: 21, emoji: "⭐", category: 'objects', name: '星星' },
+		{ id: 22, emoji: "🔥", category: 'objects', name: '火焰' },
+		{ id: 23, emoji: "💯", category: 'objects', name: '100分' },
+		{ id: 24, emoji: "🎉", category: 'objects', name: '庆祝' }
 	];
 
 	$scope.memeCategories = [
@@ -871,11 +943,20 @@ angular.module('Controllers')
 		try {
 			var stored = localStorage.getItem(FAVORITES_KEY);
 			if (stored) {
-				$scope.favorites = JSON.parse(stored);
+				var loadedFavorites = JSON.parse(stored);
+				// 清理旧格式数据并确保每个收藏项都有正确的属性
+				$scope.favorites = loadedFavorites.filter(function(fav) {
+					// 只保留有id和emoji属性的项目
+					return fav.id !== undefined && fav.emoji !== undefined;
+				});
+				// 重新保存清理后的数据，确保localStorage中没有旧格式数据
+				$scope.saveFavorites();
 			}
 		} catch (e) {
 			console.error('加载收藏失败:', e);
 			$scope.favorites = [];
+			// 清空localStorage以避免下次加载时出现问题
+			localStorage.removeItem(FAVORITES_KEY);
 		}
 	};
 
@@ -902,7 +983,7 @@ angular.module('Controllers')
 		if (!$scope.isFavorite(meme.id)) {
 			$scope.favorites.push({
 				id: meme.id,
-				url: meme.url,
+				emoji: meme.emoji,
 				category: meme.category,
 				name: meme.name,
 				addedAt: Date.now()
@@ -1022,40 +1103,31 @@ angular.module('Controllers')
 		var result = $scope.memes;
 
 		if ($scope.showFavoritesOnly) {
+			// 只显示收藏的表情
 			result = $scope.favorites.filter(function(fav) {
 				return result.some(function(meme) {
 					return meme.id === fav.id;
 				});
 			});
-			if ($scope.selectedMemeCategory !== 'all') {
-				result = result.filter(function(meme) {
-					return meme.category === $scope.selectedMemeCategory;
-				});
-			}
-			if ($scope.memeSearchText && $scope.memeSearchText.trim() !== '') {
-				var searchTerm = $scope.memeSearchText.toLowerCase().trim();
-				result = result.filter(function(meme) {
-					return meme.name.toLowerCase().includes(searchTerm);
-				});
-			}
-			return result;
 		}
-
+		
+		// 按分类筛选
 		if ($scope.selectedMemeCategory !== 'all') {
 			result = result.filter(function(meme) {
 				return meme.category === $scope.selectedMemeCategory;
 			});
 		}
-
+		
+		// 按搜索文本筛选
 		if ($scope.memeSearchText && $scope.memeSearchText.trim() !== '') {
 			var searchTerm = $scope.memeSearchText.toLowerCase().trim();
 			result = result.filter(function(meme) {
 				return meme.name.toLowerCase().includes(searchTerm);
 			});
 		}
-
+		
 		return result;
-	};
+	}
 
 	$scope.selectMemeCategory = function(categoryId) {
 		$scope.selectedMemeCategory = categoryId;
@@ -1069,7 +1141,7 @@ angular.module('Controllers')
 		$scope.isFileSelected = false;
 		$scope.isMsg = true;
 		var dateString = formatAMPM(new Date());
-		var memeUrl = typeof meme === 'string' ? meme : meme.url;
+		var memeUrl = typeof meme === 'string' ? meme : meme.emoji;
 		
 		$socket.emit("send-message", { username: $rootScope.username, userAvatar: $rootScope.userAvatar, msg: memeUrl, isImageMSG: false, isMeme: true, hasMsg: $scope.isMsg, hasFile: $scope.isFileSelected, msgTime: dateString, roomCode: $rootScope.roomCode }, function(data) {
 			if (data.success == true) {
@@ -1086,6 +1158,11 @@ angular.module('Controllers')
 		});
 	};
 
+	// 切换表情包面板显示/隐藏
+	$scope.toggleMemePanel = function() {
+		$scope.showMemePanel = !$scope.showMemePanel;
+	};
+	
 	$scope.sendMeme = function() {
 		if ($scope.chatMsg != undefined && $scope.chatMsg.trim() != '') {
 			$scope.enviarMEME($scope.chatMsg);
@@ -1104,7 +1181,7 @@ angular.module('Controllers')
 	// recieving new text message
 	$socket.on("new meme", function(data){
 		if(data.username == $rootScope.username){
-			data.ownMsg = true;	
+			data.ownMsg = true; 	
 		}else{
 			data.ownMsg = false;
 		}
@@ -1114,16 +1191,6 @@ angular.module('Controllers')
 			}
 			
 			SumaMensaje();
-			var esta = false;
-			for(var i = 0; i < $scope.memes.length; i++){
-				if($scope.memes[i].url == data.msg){
-					esta = true;
-					break;
-				}
-			}
-			if(!esta && data.msg != ''){
-				$scope.memes.push({url: data.msg});
-			}
 		}
 		ScrolltoBottom();
 	});
@@ -1138,28 +1205,11 @@ angular.module('Controllers')
 	
 	$socket.on("remove meme", function(data){
 		if(data.username == $rootScope.username){
-			data.ownMsg = true;	
+			data.ownMsg = true; 	
 		}else{
 			data.ownMsg = false;
 		}
-		if(data.roomCode == $rootScope.roomCode){
-			if(data.roomCode != $rootScope.roomCode){
-				return;
-			}
-			
-			var esta = false;
-			var posicion = -1;
-			for(var i = 0; i < $scope.memes.length; i++){
-				if($scope.memes[i].url == data.msg){
-					esta = true;
-					posicion = i;
-					break;
-				}
-			}
-			if(esta && data.msg != ''){
-				$scope.memes.splice(posicion, 1);
-			}
-		}
+		// 不再需要修改$scope.memes数组，因为它现在包含固定的表情列表
 	});
 
 
@@ -1294,73 +1344,7 @@ angular.module('Controllers')
 		var strTime = hours + ':' + minutes + ' ' + ampm;
 		return strTime;
 	}
-	// 加载历史消息
-	$scope.loadHistory = function() {
-	    if ($scope.isLoadingHistory || !$scope.hasMoreHistory) {
-	        return;
-	    }
 
-	    $scope.isLoadingHistory = true;
-	    
-	    var url = $rootScope.baseUrl + '/v1/messages/' + $scope.roomCode;
-	    var params = {
-	        params: {
-	            pageSize: 20
-	        }
-	    };
-
-	    // 如果有最旧消息ID，获取更早的消息
-	    if ($scope.oldestMessageId) {
-	        params.params.beforeId = $scope.oldestMessageId;
-	    }
-
-	    $http.get(url, params)
-	        .then(function(response) {
-	            if (response.data.success) {
-	                var historyMessages = response.data.messages;
-	                
-	                // 反转消息顺序，确保按时间正序
-	                historyMessages.reverse();
-	                
-	                // 如果是首次加载，替换整个消息列表
-	                if (!$scope.oldestMessageId) {
-	                    $scope.messeges = historyMessages;
-	                    
-	                    // 首次加载后保存到本地缓存
-	                    if (historyMessages.length > 0) {
-	                        chatHistoryCacheService.cacheMessages($scope.roomCode, historyMessages);
-	                        console.log('已保存', historyMessages.length, '条消息到本地缓存');
-	                    }
-	                } else {
-	                    // 否则插入到列表开头
-	                    $scope.messeges = historyMessages.concat($scope.messeges);
-	                }
-	                
-	                // 更新最旧消息ID
-	                if (historyMessages.length > 0) {
-	                    $scope.oldestMessageId = historyMessages[0].id;
-	                }
-	                
-	                // 更新是否有更多消息
-	                $scope.hasMoreHistory = response.data.hasMore;
-	                
-	                // 滚动到加载的历史消息位置
-	                if (historyMessages.length > 0) {
-	                    $timeout(function() {
-	                        var targetElement = document.querySelector('[data-message-id="' + historyMessages[0].id + '"]');
-	                        if (targetElement) {
-	                            targetElement.scrollIntoView({ behavior: 'instant', block: 'start' });
-	                        }
-	                    }, 100);
-	                }
-	            }
-	            $scope.isLoadingHistory = false;
-	        })
-	        .catch(function(error) {
-	            console.error('加载历史消息失败:', error);
-	            $scope.isLoadingHistory = false;
-	        });
-	};
 	// toggle online member list mobile
  	$scope.custom = true;
     $scope.toggleCustom = function() {
@@ -1387,7 +1371,9 @@ $scope.sendCode = function(){
 			var dateString = formatAMPM(new Date());
 			
 			var IsImageMSG = false;
-			if ($scope.chatMsg.match(/\.(jpeg|jpg|gif|png)$/) != null){
+			// 只有完整的URL才会被当作图片处理
+			var imageUrlRegex = /^(https?:\/\/.*\.(jpeg|jpg|gif|png))$/i;
+			if (imageUrlRegex.test($scope.chatMsg)){
 				IsImageMSG = true;
 			}
 			
@@ -1431,7 +1417,9 @@ $scope.sendCode = function(){
 			var dateString = formatAMPM(new Date());
 			
 			var IsImageMSG = false;
-			if ($scope.chatMsg.match(/\.(jpeg|jpg|gif|png)$/) != null){
+			// 只有完整的URL才会被当作图片处理
+			var imageUrlRegex = /^(https?:\/\/.*\.(jpeg|jpg|gif|png))$/i;
+			if (imageUrlRegex.test($scope.chatMsg)){
 				IsImageMSG = true;
 			}
 			

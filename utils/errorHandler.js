@@ -48,6 +48,7 @@ function handleError(type, error) {
         '[' + timestamp + '] [' + type + ']',
         '消息: ' + (error.message || 'Unknown error'),
         '堆栈: ' + (error.stack || 'No stack trace'),
+        '错误对象: ' + JSON.stringify(error, Object.getOwnPropertyNames(error)),
         '---'
     ].join('\n');
 

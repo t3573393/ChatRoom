@@ -6,7 +6,7 @@
  * @description 提供踢出用户、禁言/解禁等管理功能
  */
 
-app.factory('roomManagementService', ['$rootScope', 'socket', function($rootScope, socket) {
+angular.module('Services').factory('roomManagementService', ['$rootScope', '$socket', function($rootScope, $socket) {
     var service = {};
     
     /**
@@ -15,7 +15,7 @@ app.factory('roomManagementService', ['$rootScope', 'socket', function($rootScop
      * @param {Function} callback - 回调函数
      */
     service.kickUser = function(targetUsername, callback) {
-        socket.emit('kick-user', {
+        $socket.emit('kick-user', {
             targetUsername: targetUsername
         }, function(response) {
             if (callback) {
@@ -25,7 +25,7 @@ app.factory('roomManagementService', ['$rootScope', 'socket', function($rootScop
     };
     
     service.muteUser = function(targetUsername, callback) {
-        socket.emit('mute-user', {
+        $socket.emit('mute-user', {
             targetUsername: targetUsername
         }, function(response) {
             if (callback) {
@@ -35,7 +35,7 @@ app.factory('roomManagementService', ['$rootScope', 'socket', function($rootScop
     };
     
     service.unmuteUser = function(targetUsername, callback) {
-        socket.emit('unmute-user', {
+        $socket.emit('unmute-user', {
             targetUsername: targetUsername
         }, function(response) {
             if (callback) {
@@ -53,19 +53,19 @@ app.factory('roomManagementService', ['$rootScope', 'socket', function($rootScop
     };
     
     service.registerEventListeners = function($scope) {
-        socket.on('you-have-been-kicked', function(data) {
+        $socket.on('you-have-been-kicked', function(data) {
             $scope.$emit('you-have-been-kicked', data);
         });
         
-        socket.on('user-kicked', function(data) {
+        $socket.on('user-kicked', function(data) {
             $scope.$emit('user-kicked', data);
         });
         
-        socket.on('user-muted', function(data) {
+        $socket.on('user-muted', function(data) {
             $scope.$emit('user-muted', data);
         });
         
-        socket.on('user-unmuted', function(data) {
+        $socket.on('user-unmuted', function(data) {
             $scope.$emit('user-unmuted', data);
         });
     };

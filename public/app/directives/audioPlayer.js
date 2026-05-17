@@ -1,4 +1,4 @@
-angular.module('app')
+angular.module('Controllers')
 .directive('audioPlayer', [function() {
     return {
         restrict: 'E',

@@ -6,7 +6,7 @@
 
 'use strict';
 
-app.factory('burnAfterReadingService', ['$rootScope', function($rootScope) {
+angular.module('Services').factory('burnAfterReadingService', ['$rootScope', function($rootScope) {
     var service = {};
 
     var CONFIG_KEY = 'burn_after_reading_config';

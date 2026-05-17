@@ -1,6 +1,6 @@
 'use strict';
 
-app.factory('themeService', ['$rootScope', '$interval', function($rootScope, $interval) {
+angular.module('Services').factory('themeService', ['$rootScope', '$interval', function($rootScope, $interval) {
     var service = {};
 
     var THEME_KEY = 'user_theme_preference';
