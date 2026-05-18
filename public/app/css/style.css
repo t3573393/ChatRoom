@@ -145,6 +145,12 @@ html,body{height:100%;}
 .wordwrap {    
    word-wrap: break-word;      /* IE */
 }
+
+/* 确保消息项之间有足够的间距 */
+.direct-chat-msg {
+    margin-bottom: 15px !important; /* 添加重要性声明确保生效 */
+    clear: both; /* 确保清除前面的浮动 */
+}
 .chat-box{
 	height: 20px;
 	width: 100%;
@@ -1013,6 +1019,7 @@ html,body{height:100%;}
     position: relative;
     border: 1px dashed #ff6b6b;
     background: rgba(255, 107, 107, 0.05);
+    color: #333;
 }
 
 .burn-message.burning {

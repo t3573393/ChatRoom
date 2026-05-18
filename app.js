@@ -30,17 +30,14 @@ var db = require('./database/db');
 var roomManager = require('./database/roomManager');
 
 
-// Initializing Variables
-var nickname = [];
-var i = [];
-var x = [];
-var online_member = [];
-var temp1;
-var socket_id;
-var socket_data;
-var files_array  = [];
-var expiryTime = 8;
-var routineTime = 1;
+// 全局变量初始化
+// 用户管理模块
+var userManager = require('./database/userManager');
+
+// 文件管理
+var files_array  = [];        // 存储上传文件信息的数组
+var expiryTime = 8;           // 文件过期时间（小时）
+var routineTime = 1;          // 定时任务执行间隔（小时）
 
 // 初始化日志和错误处理系统
 logger.init();
@@ -48,11 +45,14 @@ errorHandler.init();
 
 logger.info('Server', 'ChatRoom 服务器启动');
 
-server.listen(8282);		// server starting on port '8282'
+var PORT = process.env.PORT || 8282;
+server.listen(PORT);
+logger.info('Server', '服务器监听端口: ' + PORT);
 
 // 初始化数据库
 db.initDatabase().then(() => {
     logger.info('Database', '数据库初始化成功');
+    roomManager.init(db);
 }).catch(err => {
     logger.error('Database', '数据库初始化失败: ' + err.message);
 });
@@ -87,19 +87,31 @@ app.use(express.static(__dirname + '/public/app/upload/images'));
 app.use(express.static(__dirname + '/public/app/upload/music'));
 app.use(express.static(__dirname + '/public/app/upload/doc'));
 
-var url_server = "http://10.44.43.174:8282";
+// var url_server = "http://10.44.43.174:8282"; // 注释掉静态URL定义，改为从请求中动态获取
 
-// CORS Issue Fix
-app.use(function(req, res, next) {														
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  next();
+// CORS 配置 - 从环境变量读取允许的域名列表
+var allowedOrigins = process.env.CORS_ALLOWED_ORIGINS 
+    ? process.env.CORS_ALLOWED_ORIGINS.split(',') 
+    : ['http://localhost:8282', 'http://localhost:3000'];
+
+app.use(function(req, res, next) {
+    var origin = req.headers.origin;
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        res.header("Access-Control-Allow-Origin", origin);
+    }
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    next();
 });
 
-//sockets handling
-ios.on('connection', function(socket){	
+// Socket.io 连接处理
+// 当有新的客户端连接到服务器时触发
+ios.on('connection', function(socket){
+	logger.info('Connection', '新客户端连接: ' + socket.id);
 
-	// creating new user - auto add suffix if username exists
+	// 用户加入房间事件处理
+	// 处理新用户加入房间请求，包括用户名冲突检测和房间权限设置
 	socket.on('new user', function(data, callback){
 		var originalUsername = data.username;
 		var finalUsername = originalUsername;
@@ -107,7 +119,7 @@ ios.on('connection', function(socket){
 		var maxAttempts = 10;
 		
 		// 查找可用的用户名（添加数字后缀）
-		while (nickname[finalUsername] && suffix <= maxAttempts) {
+		while (userManager.isUserOnline(finalUsername) && suffix <= maxAttempts) {
 			finalUsername = originalUsername + suffix;
 			suffix++;
 		}
@@ -124,7 +136,10 @@ ios.on('connection', function(socket){
 		socket.roomCode = data.roomCode;
 		socket.isWritting = false;
 		socket.activo = true;
-		nickname[finalUsername] = socket;
+		userManager.addUser(socket);
+		
+		// 将socket加入房间，这样才能收到房间内的广播消息
+		socket.join(data.roomCode);
 		
 		var isCreator = roomManager.addRoomCreator(data.roomCode, finalUsername);
 		socket.isRoomCreator = isCreator;
@@ -158,9 +173,8 @@ ios.on('connection', function(socket){
 		var success = roomManager.kickUser(socket.roomCode, data.targetUsername);
 		
 		if (success) {
-			if (nickname[data.targetUsername]) {
-				var targetSocket = nickname[data.targetUsername];
-				
+			var targetSocket = userManager.getUser(data.targetUsername);
+			if (targetSocket) {
 				targetSocket.emit('you-have-been-kicked', {
 					roomCode: socket.roomCode,
 					message: '您已被管理员踢出房间'
@@ -168,7 +182,7 @@ ios.on('connection', function(socket){
 				
 				targetSocket.disconnect(true);
 				
-				delete nickname[data.targetUsername];
+				userManager.removeUser(data.targetUsername);
 			}
 			
 			ios.sockets.in(socket.roomCode).emit('user-kicked', {
@@ -244,120 +258,70 @@ ios.on('connection', function(socket){
 	});
 
 	socket.on('user-activo', function(data, callback){
-		//console.log("escribiendo:"+data);
-		if(!nickname[data.username])
-			{
-				callback({success:false});
-			}else{
-				var online_member = [];
-				callback({success:true});
-				i = Object.keys(nickname);
-				for(var j=0;j<i.length;j++ )
-				{
-					socket_id = i[j];
-					socket_data = nickname[socket_id];
-					if(data.username == socket_data.username)
-						socket_data.activo = true;
-					temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar, "roomCode":socket_data.roomCode, "isWritting": socket_data.isWritting, "activo": socket_data.activo};
-					online_member.push(temp1);
-				}
-				ios.sockets.emit('online-members', online_member);
-			}
+		if(!userManager.isUserOnline(data.username))
+		{
+			callback({success:false});
+		}else{
+			callback({success:true});
+			userManager.updateUserStatus(data.username, 'activo', true);
+			ios.sockets.emit('online-members', userManager.getAllUsers());
+		}
 	});
 
 	socket.on('user-inactivo', function(data, callback){
-		//console.log("escribiendo:"+data);
-		if(!nickname[data.username])
-			{
-				callback({success:false});
-			}else{
-				var online_member = [];
-				callback({success:true});
-				i = Object.keys(nickname);
-				for(var j=0;j<i.length;j++ )
-				{
-					socket_id = i[j];
-					socket_data = nickname[socket_id];
-					if(data.username == socket_data.username)
-						socket_data.activo = false;
-					temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar, "roomCode":socket_data.roomCode, "isWritting": socket_data.isWritting, "activo": socket_data.activo};
-					online_member.push(temp1);
-				}
-				ios.sockets.emit('online-members', online_member);
-			}
+		if(!userManager.isUserOnline(data.username))
+		{
+			callback({success:false});
+		}else{
+			callback({success:true});
+			userManager.updateUserStatus(data.username, 'activo', false);
+			ios.sockets.emit('online-members', userManager.getAllUsers());
+		}
 	});
 
 	socket.on('user-writting', function(data, callback){
-		//console.log("escribiendo:"+data);
-		if(!nickname[data.username])
-			{
-				callback({success:false});
-			}else{
-				var online_member = [];
-				callback({success:true});
-				i = Object.keys(nickname);
-				for(var j=0;j<i.length;j++ )
-				{
-					socket_id = i[j];
-					socket_data = nickname[socket_id];
-					if(data.username == socket_data.username)
-						socket_data.isWritting = true;
-					temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar, "roomCode":socket_data.roomCode, "isWritting": socket_data.isWritting, "activo": socket_data.activo};
-					online_member.push(temp1);
-				}
-				ios.sockets.emit('online-members', online_member);
-			}
+		if(!userManager.isUserOnline(data.username))
+		{
+			callback({success:false});
+		}else{
+			callback({success:true});
+			userManager.updateUserStatus(data.username, 'isWritting', true);
+			ios.sockets.emit('online-members', userManager.getAllUsers());
+		}
 	});
 
 
 	socket.on('user-stop-writting', function(data, callback){
-		//console.log("no escribiendo:"+data);
-		if(!nickname[data.username])
-			{
-				callback({success:false});
-			}else{
-				var online_member = [];
-				callback({success:true});
-				i = Object.keys(nickname);
-				for(var j=0;j<i.length;j++ )
-				{
-					socket_id = i[j];
-					socket_data = nickname[socket_id];
-					if(data.username == socket_data.username)
-						socket_data.isWritting = false;
-					temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar, "roomCode":socket_data.roomCode, "isWritting": socket_data.isWritting, "activo": socket_data.activo};
-					online_member.push(temp1);
-				}
-				ios.sockets.emit('online-members', online_member);
-			}
+		if(!userManager.isUserOnline(data.username))
+		{
+			callback({success:false});
+		}else{
+			callback({success:true});
+			userManager.updateUserStatus(data.username, 'isWritting', false);
+			ios.sockets.emit('online-members', userManager.getAllUsers());
+		}
 	});
 
 	// sending online members list
 	socket.on('get-online-members', function(data){
-		var online_member = [];
-		i = Object.keys(nickname);
-		for(var j=0;j<i.length;j++ )
-		{
-			socket_id = i[j];
-			socket_data = nickname[socket_id];
-			temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar, "roomCode":socket_data.roomCode, "isWritting": socket_data.isWritting, "activo": socket_data.activo};
-			online_member.push(temp1);
-		}
-		ios.sockets.emit('online-members', online_member);		
+		ios.sockets.emit('online-members', userManager.getAllUsers());		
 	});
 
-	// sending new message
+	// 消息发送事件处理
+	// 处理客户端发送的消息，支持文本、图片、表情、代码块和阅后即焚等多种消息类型
 	socket.on('send-message', function(data, callback){
 		if (!socket.username || !socket.roomCode) {
 			callback({success: false, message: '参数错误'});
 			return;
 		}
 		
+		// 权限验证：检查用户是否被禁言
 		if (roomManager.isMuted(socket.roomCode, socket.username)) {
 			callback({success: false, message: '您已被管理员禁言，无法发送消息'});
 			return;
 		}
 		
+		// 敏感词过滤：检测消息内容是否包含敏感词
 		var filterResult = roomManager.filterSensitiveWords(data.msg);
 		if (filterResult.contains) {
 			logger.warn('Security', '检测到敏感词消息: 用户 ' + socket.username + ' 在房间 ' + socket.roomCode);
@@ -365,85 +329,92 @@ ios.on('connection', function(socket){
 			return;
 		}
 		
-		if (nickname[data.username]) {
+		if (userManager.isUserOnline(data.username)) {
 			if(data.hasMsg){
 				logger.info('Message', '用户 ' + data.username + ' 在房间 ' + data.roomCode + ' 发送消息: ' + (data.msg ? data.msg.substring(0, 50) : 'null'));
 				
-				var messageId = Date.now();
-				
+				// 处理阅后即焚消息的参数
 				var isBurnAfterReading = data.isBurnAfterReading ? 1 : 0;
-				var burnDuration = data.burnDuration || 10;
+				var burnDuration = data.burnDuration || 10; // 默认10秒有效期
 				
-				// 保存消息到数据库
+				// 判断消息类型：图片、表情、GIF或文本
 				var messageType = data.isImageMSG ? 'image' : data.isMeme ? 'meme' : data.isGif ? 'gif' : 'text';
-				var fileInfo = null;
+				var fileInfo = null; // 文本消息没有文件信息
 				
-				// 使用db.js提供的API保存消息
+				// 将消息保存到数据库，使用 Promise 链确保 ID 一致
 				db.saveMessageWithBurn(
-					data.roomCode,
-					data.username,
-					data.userAvatar,
-					messageType,
-					data.msg,
-					fileInfo,
-					data.isBurnAfterReading,
-					data.burnDuration
-				).then(function(savedMessageId) {
-					// 消息保存成功
-					console.log('消息已保存，ID:', savedMessageId);
+					data.roomCode,         // 房间代码
+					data.username,         // 发送者用户名
+					data.userAvatar,       // 发送者头像
+					messageType,           // 消息类型
+					data.msg,              // 消息内容
+					fileInfo,              // 文件信息（文本消息为null）
+					data.isBurnAfterReading, // 是否阅后即焚
+					data.burnDuration      // 阅后即焚有效期
+				).then(function(messageId) {
+					// 消息保存成功，使用数据库返回的真实 ID
+					console.log('消息已保存，ID:', messageId);
+					
+					db.markMessageDelivered(messageId).then(function() {
+						ios.sockets.in(data.roomCode).emit('message-delivered', {
+							messageId: messageId,
+							roomCode: data.roomCode
+						});
+					}).catch(function(err) {
+						logger.error('[Socket-MessageStatus] 标记消息送达失败:', err);
+					});
+					
+					// 根据消息类型广播给客户端
+					if (isBurnAfterReading) {
+						// 处理阅后即焚消息：只广播给特定房间的用户
+						ios.to(data.roomCode).emit('new burn message', {
+							username: data.username,
+							userAvatar: data.userAvatar,
+							msg: data.msg,
+							msgTime: data.msgTime,
+							isBurnAfterReading: true,
+							burnDuration: burnDuration,
+							messageId: messageId,
+							roomCode: data.roomCode
+						});
+					} else {
+						// 处理普通消息：构建完整的消息对象
+						var messageData = {
+							username: data.username,         // 发送者用户名
+							userAvatar: data.userAvatar,     // 发送者头像
+							msg: data.msg,                  // 消息内容
+							msgTime: data.msgTime,           // 发送时间
+							isImageMSG: data.isImageMSG,     // 是否为图片消息
+							isMeme: data.isMeme,             // 是否为表情消息
+							isGif: data.isGif,               // 是否为GIF消息
+							roomCode: data.roomCode,         // 房间代码
+							hasMsg: data.hasMsg,             // 是否包含文本内容
+							hasFile: data.hasFile,           // 是否包含文件
+							mentions: data.mentions,         // @提到的用户
+							replyTo: data.replyTo,           // 回复的消息ID
+							messageId: messageId             // 消息唯一ID
+						};
+						// 广播普通消息给所有客户端
+						ios.sockets.emit('new message', messageData);
+					}
 				}).catch(function(err) {
 					// 消息保存失败
 					console.error('保存消息失败:', err);
 				});
 				
-				db.markMessageDelivered(messageId).then(function() {
-					ios.sockets.in(data.roomCode).emit('message-delivered', {
-						messageId: messageId,
-						roomCode: data.roomCode
-					});
-				}).catch(function(err) {
-					logger.error('[Socket-MessageStatus] 标记消息送达失败:', err);
-				});
-				
-				if (isBurnAfterReading) {
-					io.to(data.roomCode).emit('new burn message', {
-						username: data.username,
-						userAvatar: data.userAvatar,
-						msg: data.msg,
-						msgTime: data.msgTime,
-						isBurnAfterReading: true,
-						burnDuration: burnDuration,
-						messageId: messageId
-					});
-				} else {
-						// 构建完整的消息对象，包含messageId等必要属性
-						var messageData = {
-							username: data.username,
-							userAvatar: data.userAvatar,
-							msg: data.msg,
-							msgTime: data.msgTime,
-							isImageMSG: data.isImageMSG,
-							isMeme: data.isMeme,
-							isGif: data.isGif,
-							roomCode: data.roomCode,
-							hasMsg: data.hasMsg,
-							hasFile: data.hasFile,
-							mentions: data.mentions,
-							replyTo: data.replyTo,
-							messageId: messageId
-						};
-						ios.sockets.emit('new message', messageData);
-					}
-				
 				callback({success: true});
 			}else if(data.hasFile){
+				// 处理文件消息：根据文件类型进行不同处理
 				if(data.istype == "image"){
+					// 图片文件：发送图片消息事件
 					socket.emit('new message image', data);
 					callback({success:true});
 				} else if(data.istype == "music"){
+					// 音频文件：发送音频消息事件
 					socket.emit('new message music', data);
 					callback({success:true});
 				} else if(data.istype == "PDF"){
+					// PDF文件：发送PDF消息事件
 					socket.emit('new message PDF', data);
 					callback({success:true});
 				}
@@ -593,13 +564,13 @@ ios.on('connection', function(socket){
 		});
 	});
 	socket.on('remove-meme', function(data, callback){
-		if (nickname[data.username]) {
+		if (userManager.isUserOnline(data.username)) {
 				ios.sockets.emit('remove meme', data);
 				callback({success:true});
 		}		
 	});
 	socket.on('send-meme', function(data, callback){
-		if (nickname[data.username]) {
+		if (userManager.isUserOnline(data.username)) {
 				ios.sockets.emit('new meme', data);
 				callback({success:true});
 		}		
@@ -610,17 +581,8 @@ ios.on('connection', function(socket){
 		if (socket.username && socket.roomCode) {
 			roomManager.removeRoomMember(socket.roomCode, socket.username);
 		}
-		delete nickname[socket.username];
-		online_member = [];
-		x = Object.keys(nickname);
-		for(var k=0;k<x.length;k++ )
-    	{
-        	socket_id = x[k];
-        	socket_data = nickname[socket_id];
-        	temp1 = {"username": socket_data.username, "userAvatar":socket_data.userAvatar, "roomCode":socket_data.roomCode};
-            online_member.push(temp1);
-    	}
-		ios.sockets.emit('online-members', online_member);            	
+		userManager.removeUser(socket.username);
+		ios.sockets.emit('online-members', userManager.getAllUsers());            	
    	});
 });
 
@@ -653,7 +615,10 @@ app.post('/v1/uploadImage',function (req, res){
 				filename : files.file.name,
 				size : bytesToSize(files.file.size)
 		};
-		data.serverfilename = url_server + '/' +path.parse(data.serverfilename).base;
+		// 从请求中动态获取服务器URL
+		var protocol = req.protocol;
+		var host = req.get('host');
+		data.serverfilename = protocol + '://' + host + '/' + path.parse(data.serverfilename).base;
 		//console.log(data);
 	    var image_file = { 
 		        dwid : fields.dwid,
@@ -701,7 +666,10 @@ app.post('/v1/uploadAudio',function (req, res){
 				filename : files.file.name,
 				size : bytesToSize(files.file.size)
 		};
-		data.serverfilename = url_server + '/' +path.parse(data.serverfilename).base;
+		// 从请求中动态获取服务器URL
+		var protocol = req.protocol;
+		var host = req.get('host');
+		data.serverfilename = protocol + '://' + host + '/' + path.parse(data.serverfilename).base;
 	    var audio_file = { 
 		        dwid : fields.dwid,
 		        filename : files.file.name,
@@ -745,7 +713,10 @@ app.post('/v1/uploadPDF',function (req, res){
 				filename : files.file.name,
 				size : bytesToSize(files.file.size)
 		};
-		data.serverfilename = url_server + '/' +path.parse(data.serverfilename).base;
+		// 从请求中动态获取服务器URL
+		var protocol = req.protocol;
+		var host = req.get('host');
+		data.serverfilename = protocol + '://' + host + '/' + path.parse(data.serverfilename).base;
 	    var pdf_file = { 
 		        dwid : fields.dwid,
 		        filename : files.file.name,
@@ -907,17 +878,31 @@ app.get('/v1/messages/:roomCode', function(req, res) {
         })
         .then(result => {
             // 转换数据库字段为前端格式
-            var messages = result.messages.map(msg => ({
-                id: msg.id,
-                roomCode: msg.room_code,
-                username: msg.username,
-                userAvatar: msg.user_avatar,
-                messageType: msg.message_type,
-                messageContent: msg.message_content,
-                fileInfo: msg.file_info ? JSON.parse(msg.file_info) : null,
-                createdAt: msg.created_at,
-                msgTime: formatTime(new Date(msg.created_at))
-            }));
+            var messages = result.messages.map(msg => {
+                // 确定消息类型标识
+                var isImageMSG = msg.message_type === 'image';
+                var isMeme = msg.message_type === 'meme';
+                var isGif = msg.message_type === 'gif';
+                var hasFile = msg.message_type === 'image' || msg.message_type === 'music' || msg.message_type === 'pdf';
+                var hasMsg = msg.message_type === 'text' || msg.message_type === 'meme' || msg.message_type === 'gif';
+                
+                return {
+                    id: msg.id,
+                    messageId: msg.id, // 兼容前端的messageId字段
+                    roomCode: msg.room_code,
+                    username: msg.username,
+                    userAvatar: msg.user_avatar,
+                    msg: msg.message_content, // 前端期望的msg字段，而不是messageContent
+                    isImageMSG: isImageMSG,
+                    isMeme: isMeme,
+                    isGif: isGif,
+                    hasMsg: hasMsg,
+                    hasFile: hasFile,
+                    createdAt: msg.created_at,
+                    msgTime: formatTime(new Date(msg.created_at)),
+                    status: 'sent' // 默认消息状态
+                };
+            });
 
             res.json({
                 success: true,
@@ -990,9 +975,9 @@ app.post('/api/burn-message', async function(req, res) {
 
         var deleted = await db.deleteBurnAfterReadingMessage(messageId);
 
-        if (deleted) {
-            io.emit('message-burned', { messageId: messageId });
-            logger.info('[BurnAfterReading] 消息已销毁: ' + messageId);
+        if (deleted === true) {
+            ios.emit('message-burned', { messageId: messageId });
+            logger.info('[BurnAfterReading]', '消息已销毁: ' + messageId);
             res.json({ success: true });
         } else {
             res.status(404).json({ success: false, error: '消息不存在或已被删除' });

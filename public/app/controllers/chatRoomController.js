@@ -155,6 +155,17 @@ angular.module('Controllers')
 	// 控制器销毁时清理资源
 	$scope.$on('$destroy', function() {
 		themeService.destroy();
+		if ($scope.editTimer) {
+			clearInterval($scope.editTimer);
+		}
+		for (var msgId in $scope.burnMessages) {
+			if ($scope.burnMessages[msgId].interval) {
+				clearInterval($scope.burnMessages[msgId].interval);
+			}
+		}
+		for (var timerId in $scope.burnTimers) {
+			clearTimeout($scope.burnTimers[timerId]);
+		}
 	});
 	
 	// 初始化主题
@@ -286,17 +297,21 @@ angular.module('Controllers')
 		});
 	};
 
+	function scrollElementIntoView(element, highlightClass, highlightDuration) {
+		if (!element) return false;
+		element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		element.classList.add(highlightClass || 'search-target');
+		setTimeout(function() {
+			element.classList.remove(highlightClass || 'search-target');
+		}, highlightDuration || 2000);
+		return true;
+	}
+
 	$scope.goToMessage = function(message) {
 		$scope.closeSearch();
 		$timeout(function() {
 			var targetElement = document.querySelector('[data-message-id="' + message.id + '"]');
-			if (targetElement) {
-				targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-				targetElement.classList.add('search-target');
-				setTimeout(function() {
-					targetElement.classList.remove('search-target');
-				}, 2000);
-			} else {
+			if (!scrollElementIntoView(targetElement)) {
 				console.log('未找到消息元素:', message.id);
 			}
 		}, 100);
@@ -349,7 +364,7 @@ angular.module('Controllers')
 		var dateString = formatAMPM(new Date());
 		var duration = burnAfterReadingService.getDuration();
 		
-		$socket.emit("send-message", {
+		var messageData = {
 			username: $rootScope.username,
 			userAvatar: $rootScope.userAvatar,
 			msg: $scope.chatMsg,
@@ -361,7 +376,9 @@ angular.module('Controllers')
 			hasFile: false,
 			msgTime: dateString,
 			roomCode: $rootScope.roomCode
-		}, function(data) {
+		};
+		
+		$socket.emit("send-message", messageData, function(data) {
 			if (data.success == true) {
 				$scope.chatMsg = "";
 				$scope.setFocus = true;
@@ -397,6 +414,13 @@ angular.module('Controllers')
 		if ($scope.burnTimers[messageId]) {
 			clearTimeout($scope.burnTimers[messageId]);
 			delete $scope.burnTimers[messageId];
+		}
+
+		if ($scope.burnMessages[messageId] && $scope.burnMessages[messageId].destroying) {
+			return;
+		}
+		if ($scope.burnMessages[messageId]) {
+			$scope.burnMessages[messageId].destroying = true;
 		}
 
 		var msgElement = document.querySelector('[data-message-id="' + messageId + '"]');
@@ -583,13 +607,15 @@ angular.module('Controllers')
 	});
 	
 	// 历史记录相关
-	$scope.hasMoreHistory = true;
+	$scope.hasMoreHistory = false; // 初始设为false，只有在确认有历史消息后才显示
 	$scope.isLoadingHistory = false;
 	$scope.oldestMessageId = null;
 
 	// 加载聊天历史记录函数
 	$scope.loadHistory = function() {
-	    if ($scope.isLoadingHistory || !$scope.hasMoreHistory) {
+	    // 第一次加载时，即使hasMoreHistory为false也允许加载
+	    // 后续加载只有在hasMoreHistory为true且不在加载中时才允许
+	    if ($scope.isLoadingHistory || (!$scope.hasMoreHistory && $scope.oldestMessageId)) {
 	        return;
 	    }
 
@@ -655,13 +681,15 @@ angular.module('Controllers')
 	        });
 	};
 
-	// 加载聊天历史
-	$scope.loadHistory();
+	// 设置房间代码
 	$scope.roomCode = $rootScope.roomCode;
 	$scope.mensajesNuevos = 0;
 
 	// 从本地缓存加载最近的消息（快速显示）
 	var cachedMessages = chatHistoryCacheService.getCachedMessages($scope.roomCode);
+
+	// 加载聊天历史
+	$scope.loadHistory();
 	if (cachedMessages && cachedMessages.length > 0) {
 		$scope.messeges = cachedMessages;
 		console.log('从本地缓存加载了', cachedMessages.length, '条消息');
@@ -1507,7 +1535,7 @@ $scope.sendCode = function(){
 			data.ownMsg = false;
 		}
 		if(data.roomCode == $rootScope.roomCode){
-			$scope.messeges.push({
+			var newMsg = {
 				username: data.username,
 				userAvatar: data.userAvatar,
 				msg: data.msg,
@@ -1515,15 +1543,14 @@ $scope.sendCode = function(){
 				isBurnAfterReading: true,
 				burnDuration: data.burnDuration,
 				messageId: data.messageId || ('burn_' + Date.now())
-			});
+			};
+			$scope.messeges.push(newMsg);
 			
 			if(!data.ownMsg){
 				SumaMensaje();
 				ScrolltoBottom();
 				beep();
 			}
-			
-			$scope.$apply();
 			
 			var msgId = data.messageId || ('burn_' + Date.now());
 			$timeout(function() {
@@ -1534,7 +1561,6 @@ $scope.sendCode = function(){
 	
 	$socket.on("message-burned", function(data) {
 		$scope.destroyBurnMessage(data.messageId);
-		$scope.$apply();
 	});
 
 	$socket.on("message-edited", function(data) {

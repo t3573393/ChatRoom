@@ -81,47 +81,54 @@ function initDatabase() {
                     }
                 });
 
-                runMessageMigrations();
+                db.run('SELECT status FROM chat_messages LIMIT 1', function(err) {
+                    if (err && err.message.includes('no such column: status')) {
+                        db.run('ALTER TABLE chat_messages ADD COLUMN status TEXT DEFAULT \'normal\'', function() {
+                            logger.info('Database', '已添加消息状态字段');
+                        });
+                    }
+                });
 
-                logger.info('Database', '数据库表初始化完成');
-                resolve(db);
+                db.run(`
+                    CREATE TABLE IF NOT EXISTS message_edit_history (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        message_id INTEGER NOT NULL,
+                        old_content TEXT,
+                        edited_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                `, function() {
+                    logger.info('Database', '消息编辑历史表已创建');
+                });
+
+                db.run(`
+                    CREATE TABLE IF NOT EXISTS message_delivery_status (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        message_id INTEGER NOT NULL,
+                        username TEXT NOT NULL,
+                        status TEXT DEFAULT 'delivered',
+                        delivered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        read_at DATETIME,
+                        UNIQUE(message_id, username)
+                    )
+                `, function() {
+                    logger.info('Database', '消息送达状态表已创建');
+                });
+
+                db.run(`
+                    CREATE TABLE IF NOT EXISTS room_states (
+                        room_code TEXT PRIMARY KEY,
+                        creator TEXT NOT NULL,
+                        members TEXT,
+                        mutes TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                `, function() {
+                    logger.info('Database', '房间状态表已创建');
+                    logger.info('Database', '数据库表初始化完成');
+                    resolve(db);
+                });
             });
         });
-    });
-}
-
-function runMessageMigrations() {
-    db.run('SELECT status FROM chat_messages LIMIT 1', function(err) {
-        if (err && err.message.includes('no such column: status')) {
-            db.run('ALTER TABLE chat_messages ADD COLUMN status TEXT DEFAULT \'normal\'', function() {
-                logger.info('Database', '已添加消息状态字段');
-            });
-        }
-    });
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS message_edit_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            message_id INTEGER NOT NULL,
-            old_content TEXT,
-            edited_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `, function() {
-        logger.info('Database', '消息编辑历史表已创建');
-    });
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS message_delivery_status (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            message_id INTEGER NOT NULL,
-            username TEXT NOT NULL,
-            status TEXT DEFAULT 'delivered',
-            delivered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            read_at DATETIME,
-            UNIQUE(message_id, username)
-        )
-    `, function() {
-        logger.info('Database', '消息送达状态表已创建');
     });
 }
 
@@ -204,19 +211,53 @@ function getMessageCount(roomCode) {
 
 function cleanupExpiredMessages() {
     return new Promise((resolve, reject) => {
-        var sql = `
-            DELETE FROM chat_messages
-            WHERE created_at < datetime('now', '-' || ? || ' days')
-        `;
+        var cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - messageRetentionDays);
+        var cutoffStr = cutoffDate.toISOString();
 
-        db.run(sql, [messageRetentionDays], function(err) {
-            if (err) {
-                console.error('清理过期消息失败:', err);
-                reject(err);
-                return;
-            }
-            console.log(`清理了 ${this.changes} 条过期消息`);
-            resolve(this.changes);
+        db.serialize(function() {
+            db.run('BEGIN TRANSACTION');
+
+            db.all('SELECT id FROM chat_messages WHERE created_at < ?', [cutoffStr], function(err, rows) {
+                if (err) {
+                    db.run('ROLLBACK');
+                    reject(err);
+                    return;
+                }
+
+                var messageIds = rows.map(function(row) { return row.id; });
+
+                if (messageIds.length === 0) {
+                    db.run('COMMIT');
+                    resolve(0);
+                    return;
+                }
+
+                var placeholders = messageIds.map(function() { return '?'; }).join(',');
+
+                db.run('DELETE FROM message_delivery_status WHERE message_id IN (' + placeholders + ')', messageIds, function(err) {
+                    if (err) {
+                        console.error('清理消息送达状态失败:', err.message);
+                    }
+                });
+
+                db.run('DELETE FROM message_edit_history WHERE message_id IN (' + placeholders + ')', messageIds, function(err) {
+                    if (err) {
+                        console.error('清理消息编辑历史失败:', err.message);
+                    }
+                });
+
+                db.run('DELETE FROM chat_messages WHERE created_at < ?', [cutoffStr], function(err) {
+                    if (err) {
+                        db.run('ROLLBACK');
+                        reject(err);
+                        return;
+                    }
+                    console.log('清理了 ' + this.changes + ' 条过期消息');
+                    db.run('COMMIT');
+                    resolve(this.changes);
+                });
+            });
         });
     });
 }
@@ -614,6 +655,70 @@ function getTotalUsersInRoom(roomCode) {
     });
 }
 
+function saveRoomState(roomCode, creator, members, mutes) {
+    return new Promise((resolve, reject) => {
+        var sql = `
+            INSERT OR REPLACE INTO room_states (room_code, creator, members, mutes, created_at)
+            VALUES (?, ?, ?, ?, datetime('now'))
+        `;
+        db.run(sql, [roomCode, creator, JSON.stringify(members || []), JSON.stringify(mutes || [])], function(err) {
+            if (err) {
+                console.error('保存房间状态失败:', err);
+                reject(err);
+                return;
+            }
+            resolve(true);
+        });
+    });
+}
+
+function getRoomState(roomCode) {
+    return new Promise((resolve, reject) => {
+        var sql = 'SELECT * FROM room_states WHERE room_code = ?';
+        db.get(sql, [roomCode], function(err, row) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            if (row) {
+                row.members = row.members ? JSON.parse(row.members) : [];
+                row.mutes = row.mutes ? JSON.parse(row.mutes) : [];
+            }
+            resolve(row);
+        });
+    });
+}
+
+function getAllRoomStates() {
+    return new Promise((resolve, reject) => {
+        var sql = 'SELECT * FROM room_states';
+        db.all(sql, function(err, rows) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            rows.forEach(function(row) {
+                row.members = row.members ? JSON.parse(row.members) : [];
+                row.mutes = row.mutes ? JSON.parse(row.mutes) : [];
+            });
+            resolve(rows);
+        });
+    });
+}
+
+function deleteRoomState(roomCode) {
+    return new Promise((resolve, reject) => {
+        var sql = 'DELETE FROM room_states WHERE room_code = ?';
+        db.run(sql, [roomCode], function(err) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(this.changes > 0);
+        });
+    });
+}
+
 function formatTime(date) {
     var hours = date.getHours();
     var minutes = date.getMinutes();
@@ -646,5 +751,9 @@ module.exports = {
     markMessagesRead: markMessagesRead,
     getMessageStatus: getMessageStatus,
     getMessageReadCount: getMessageReadCount,
-    getTotalUsersInRoom: getTotalUsersInRoom
+    getTotalUsersInRoom: getTotalUsersInRoom,
+    saveRoomState: saveRoomState,
+    getRoomState: getRoomState,
+    getAllRoomStates: getAllRoomStates,
+    deleteRoomState: deleteRoomState
 };

@@ -206,10 +206,10 @@
                           </div>
                       </div>
                       <div ng-hide="messege.hasFile">
-							<div ng-show="messege.isImageMSG"><img ng-src="{{ messege.msg }}" alt="{{ messege.msg }}" style='width:100%;'></div>
-							<div ng-show="messege.isMeme" class="meme-display">{{ messege.msg }}</div>
-							<div ng-show="!messege.isMeme && !messege.isImageMSG" ng-bind-html="renderMessageContent(messege)"></div>
-						</div>
+										<div ng-if="messege.isImageMSG || messege.isGif"><img ng-src="{{ messege.msg }}" alt="{{ messege.msg }}" style='width:100%;'></div>
+										<div ng-if="messege.isMeme" class="meme-display">{{ messege.msg }}</div>
+										<div ng-if="!messege.isMeme && !messege.isImageMSG && !messege.isGif" ng-bind-html="renderMessageContent(messege)"></div>
+								</div>
                       <div ng-show="messege.isBurnAfterReading" class="burn-indicator">
                         <span class="burn-icon">🔥</span>
                         <span ng-show="burnMessages[messege.messageId]" class="burn-timer">{{ burnMessages[messege.messageId].remaining }}s</span>
@@ -468,7 +468,7 @@
 					<span class="input-group-btn">
 						<button type="button" class="btn btn-warning btn-flat" style="margin-left: 4px; margin-right: 4px;" ng-click="toggleMemePanel()">{{'MEME'|translate}}</button>
 						<button type="button" class="btn btn-danger burn-btn" ng-class="{'active': burnModeEnabled}" ng-click="toggleBurnMode()" title="{{burnModeEnabled ? '阅后即焚模式 (点击取消)' : '点击启用阅后即焚'}}">🔥</button>
-						<button type="button" class="btn btn-warning btn-flat" ng-click="sendMsg()">{{'Send'|translate}}</button>
+						<button type="button" class="btn btn-warning btn-flat" ng-click="sendMsg()" ng-disabled="!chatMsg || !chatMsg.trim()">{{'Send'|translate}}</button>
                     </span>
                   </div>
                 </form>
