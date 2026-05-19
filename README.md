@@ -1,79 +1,134 @@
 # ChatRoom
 
-NodeJS based Text, Image, File Real Time Chat Room.
+A real-time chat room application for text, images, files, and audio sharing, built with Node.js and AngularJS.
 
-[**You can see the live demo here**](http://chat.systenics.com)
+[**Live Demo**](http://chat.systenics.com)
 
-  - Provides chat messaging using socket.io
-  - Allows file sharing of image,doc,pdf,excel,text and mp3.
-  - Periodic file deletion to save server space.
-  - Quick messaging and file sharing using formadible  
+## Features
 
+- **Real-time Messaging** - Powered by Socket.io for instant message delivery
+- **Multi-format File Sharing** - Support for images, documents (PDF, Excel, Word, Text), and audio (MP3)
+- **Room Management** - Create chat rooms, kick users, mute users, and manage room members
+- **Sensitive Word Filtering** - Configurable content moderation
+- **Internationalization** - English and Chinese language support
+- **Theme System** - Light and dark theme switching
+- **Message Management** - Edit, delete, search messages with burn-after-reading option
+- **Chat Export** - Export chat history in various formats
+- **File Preview** - Built-in preview for images, PDF documents, and audio files
+- **Auto File Cleanup** - Automatic deletion of expired files to save server space
 
->ChatRoom is a messaging and file sharing project based on angularjs and  node.js which allows users to just enter username(nickname) and start using chat messenger:
+## Architecture
 
-### Installation
-
-You need node,npm and bower installed globally:
-
-- Step1: Clone ChatRoom repository locally
-```sh
-$ git clone https://github.com/systenics/ChatRoom.git 
 ```
-- Step2: cd into cloned directory <Ex : ChatRoom/> 
-
-- Step3: install dependencies using commands 
-```sh
-$ sudo npm install
-```
-```sh
-$ bower install
-```
-```sh
-- Step4: cd into <your_app_directory/public/app/js/> and edit app.js 
-  set $rootScope.baseUrl to <http://your_ip_address:8282>
-  set $socketProvider.setConnectionUrl('http://your_ip_address:8282')
-```
-
-```sh
-- Step5: run project using node app.js in terminal  
-```
-
-```sh
-- Step6: go to your browser and enter url <http://your_ip_address:8282>
+ChatRoom/
+├── app.js                    # Node.js backend entry point
+├── database/                 # Database layer (SQLite)
+│   ├── db.js                 # Database operations
+│   ├── roomManager.js        # Room state management
+│   └── userManager.js        # User state management
+├── public/                   # Frontend static resources
+│   ├── index.html            # Main HTML entry
+│   └── app/
+│       ├── controllers/      # AngularJS controllers
+│       ├── services/         # Business services
+│       ├── directives/       # Custom Angular directives
+│       ├── views/            # HTML templates
+│       └── css/              # Stylesheets
+├── config/                   # Configuration files
+├── utils/                    # Utilities (logging, error handling)
+└── docs/                     # Documentation and specs
 ```
 
-> File shared among users will be stored in /public/app/upload
-> in respective doc, music and image directory.
-> The files in upload directory are stored with some expiry time (8 hours),
-> the files will be deleted after expiry time.
-> The routine_cleanup function deletes files after every one hour.  
+## Tech Stack
 
-> you can change the file expiry time by changing variable expiryTime
-> and routine cleanup time by changing variable routineTime in app.js.
+| Layer | Technology |
+|-------|------------|
+| **Backend** | Node.js, Express, Socket.io |
+| **Database** | SQLite3 |
+| **Frontend** | AngularJS 1.x, Bootstrap 3, AdminLTE |
+| **File Upload** | Formidable |
+| **Internationalization** | angular-translate |
+| **Rich Text** | CKEditor, bootstrap-wysihtml5 |
+| **Charts** | Chart.js |
 
-### Version
-0.0.1
+## Installation
 
-### Tech
+### Prerequisites
 
-ChatRoom uses a number of open source projects to work properly:
+- Node.js and npm installed globally
+- (Optional) Bower for frontend dependencies
 
-* [AngularJS] - HTML enhanced for web apps!
-* [Bootstrap] - great UI boilerplate for modern web apps
-* [AdminLTE] - great UI based on bootstrap
-* [node.js] - evented I/O for the backend
-* [Express] - fast node.js network app framework
-* [jQuery] - javascript library
-* [lightbox] - javascript plugin for image pop-ups 
+### Steps
 
-And of course ChatRoom itself is open source with a [public repository](https://github.com/systenics/ChatRoom) on GitHub.
+1. Clone the repository
+```sh
+git clone https://github.com/systenics/ChatRoom.git
+cd ChatRoom
+```
 
-License
-----
+2. Install backend dependencies
+```sh
+npm install
+```
+
+3. Install frontend dependencies (if using bower)
+```sh
+bower install
+```
+
+4. Configure application URL
+
+Edit `public/app/js/app.js`:
+```javascript
+$rootScope.baseUrl = 'http://localhost:8282';  // Change to your server URL
+$socketProvider.setConnectionUrl('http://localhost:8282');  // Change to your server URL
+```
+
+5. Start the server
+```sh
+node app.js
+```
+
+6. Open your browser and navigate to `http://localhost:8282`
+
+## Configuration
+
+### File Expiry Settings
+
+In `app.js`:
+```javascript
+var expiryTime = 8;    // File expiry time in hours
+var routineTime = 1;   // Cleanup routine interval in hours
+```
+
+### Sensitive Words
+
+Edit `config/sensitive-words.json` to configure content filtering.
+
+### Database
+
+Chat history is stored in `database/chat_history.db` (SQLite). Message retention defaults to 30 days.
+
+## Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm start` | Start the server on port 8282 |
+| `npm test` | Run Jest test suite |
+
+## License
 
 MIT
 
-### Contact
-- [**www.systenics.com**](http://www.systenics.com)
-- [**Other Systenics repositories**](https://github.com/systenics)
+## Authors
+
+- Saurabh Nandu - [Systenics](http://www.systenics.com)
+
+## Contributors
+
+- Balkrishna Sawant
+- Pravin Kumar Mishra
+
+## Repository
+
+- [GitHub](https://github.com/systenics/ChatRoom)

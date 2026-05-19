@@ -48,6 +48,7 @@ angular.module('Controllers')
 })
 .controller('chatRoomCtrl', function ($scope, $rootScope, $socket, $location, $http, $window, Upload, $timeout, sendImageService, $translate, $sce, roomManagementService, gifService, burnAfterReadingService, chatExportService, chatHistoryCacheService, themeService, searchService, messageEditService, messageStatusService, filePreviewService){		// Chat Page Controller
 	// Varialbles Initialization.
+	$scope.username = $rootScope.username;
 	$scope.isMsgBoxEmpty = false;
 	$scope.isFileSelected = false;
 	$scope.isMsg = false;
@@ -410,7 +411,23 @@ angular.module('Controllers')
 		}, 1000);
 	};
 	
-	$scope.destroyBurnMessage = function(messageId) {
+	$scope.destroyBurnMessage = function(messageId, isRemote) {
+		// 防止重复销毁 - 检查消息是否还在数组中
+		var messageInArray = $scope.messeges.some(function(msg) {
+			return msg.id == messageId || msg.messageId == messageId;
+		});
+		if (!messageInArray) {
+			console.log('阅后即焚消息已不在数组中，跳过销毁:', messageId);
+			// 清理可能残留的 burnMessages
+			if ($scope.burnMessages[messageId]) {
+				if ($scope.burnMessages[messageId].interval) {
+					clearInterval($scope.burnMessages[messageId].interval);
+				}
+				delete $scope.burnMessages[messageId];
+			}
+			return;
+		}
+
 		if ($scope.burnTimers[messageId]) {
 			clearTimeout($scope.burnTimers[messageId]);
 			delete $scope.burnTimers[messageId];
@@ -423,6 +440,21 @@ angular.module('Controllers')
 			$scope.burnMessages[messageId].destroying = true;
 		}
 
+		// 清除定时器
+		if ($scope.burnMessages[messageId] && $scope.burnMessages[messageId].interval) {
+			clearInterval($scope.burnMessages[messageId].interval);
+			delete $scope.burnMessages[messageId].interval;
+		}
+
+		// 从消息数组中删除消息（关键修复）
+		for (var i = 0; i < $scope.messeges.length; i++) {
+			var msg = $scope.messeges[i];
+			if (msg.id == messageId || msg.messageId == messageId) {
+				$scope.messeges.splice(i, 1);
+				break;
+			}
+		}
+
 		var msgElement = document.querySelector('[data-message-id="' + messageId + '"]');
 		if (msgElement) {
 			msgElement.classList.add('burning');
@@ -431,12 +463,32 @@ angular.module('Controllers')
 			}, 500);
 		}
 
+		// 清理 burnMessages 对象
+		if ($scope.burnMessages[messageId]) {
+			delete $scope.burnMessages[messageId];
+		}
+
+		// 如果是远程触发的销毁（通过 message-burned 事件），不需要再次调用 API
+		if (isRemote) {
+			console.log('阅后即焚消息已通过远程事件销毁:', messageId);
+			return;
+		}
+
+		console.log('正在销毁阅后即焚消息, messageId:', messageId, '类型:', typeof messageId);
 		$http.post('/api/burn-message', { messageId: messageId })
 			.then(function(response) {
 				console.log('阅后即焚消息已销毁:', messageId);
 			})
 			.catch(function(error) {
-				console.error('销毁阅后即焚消息失败:', error);
+				// 如果是 404 且消息已从数组中删除，说明是幂等删除（重复请求），忽略错误
+				var messageStillExists = $scope.messeges.some(function(msg) {
+					return msg.id == messageId || msg.messageId == messageId;
+				});
+				if (error.status === 404 && !messageStillExists) {
+					console.log('阅后即焚消息已在其他途径删除（幂等删除）:', messageId);
+				} else {
+					console.error('销毁阅后即焚消息失败:', error);
+				}
 			});
 	};
 
@@ -847,17 +899,24 @@ angular.module('Controllers')
 
 	$scope.renderMessageContent = function(messege) {
 		if (!messege.msg) return '';
-		
+
 		let content = messege.msg;
-		
+
 		if (messege.mentions && messege.mentions.length > 0) {
 			messege.mentions.forEach(username => {
 				const regex = new RegExp('@' + username, 'gi');
 				content = content.replace(regex, '<span class="mention">@' + username + '</span>');
 			});
 		}
-		
+
 		return $sce.trustAsHtml(content);
+	};
+
+	$scope.getValidImageUrl = function(messege) {
+		if (messege.serverfilename && messege.serverfilename.startsWith('http')) {
+			return messege.serverfilename;
+		}
+		return '';
 	};
 		
 	function beep() {
@@ -1542,7 +1601,7 @@ $scope.sendCode = function(){
 				msgTime: data.msgTime,
 				isBurnAfterReading: true,
 				burnDuration: data.burnDuration,
-				messageId: data.messageId || ('burn_' + Date.now())
+				messageId: data.messageId
 			};
 			$scope.messeges.push(newMsg);
 			
@@ -1552,15 +1611,18 @@ $scope.sendCode = function(){
 				beep();
 			}
 			
-			var msgId = data.messageId || ('burn_' + Date.now());
-			$timeout(function() {
-				$scope.startBurnCountdown(msgId, data.burnDuration);
-			}, 100);
+			var msgId = data.messageId;
+			if (msgId) {
+				$timeout(function() {
+					$scope.startBurnCountdown(msgId, data.burnDuration);
+				}, 100);
+			}
 		}
 	});
 	
 	$socket.on("message-burned", function(data) {
-		$scope.destroyBurnMessage(data.messageId);
+		// 远程触发的销毁，不需要再次调用 API
+		$scope.destroyBurnMessage(data.messageId, true);
 	});
 
 	$socket.on("message-edited", function(data) {
@@ -1586,7 +1648,9 @@ $scope.sendCode = function(){
 				break;
 			}
 		}
-		$scope.$apply();
+		if (!$scope.$$phase) {
+			$scope.$apply();
+		}
 	});
 	
 // ====================================== Image Sending Code ==============================

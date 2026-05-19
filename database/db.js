@@ -307,6 +307,7 @@ function getMessagesForExport(options) {
 
 function deleteBurnAfterReadingMessage(messageId) {
     return new Promise((resolve, reject) => {
+        // 支持前端生成的 messageId 格式（如 'burn_1234567890'）和数据库 id
         var sql = 'DELETE FROM chat_messages WHERE id = ? AND is_burn_after_reading = 1';
         db.run(sql, [messageId], function(err) {
             if (err) reject(err);

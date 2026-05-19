@@ -405,19 +405,44 @@ ios.on('connection', function(socket){
 				callback({success: true});
 			}else if(data.hasFile){
 				// 处理文件消息：根据文件类型进行不同处理
-				if(data.istype == "image"){
-					// 图片文件：发送图片消息事件
-					socket.emit('new message image', data);
-					callback({success:true});
-				} else if(data.istype == "music"){
-					// 音频文件：发送音频消息事件
-					socket.emit('new message music', data);
-					callback({success:true});
-				} else if(data.istype == "PDF"){
-					// PDF文件：发送PDF消息事件
-					socket.emit('new message PDF', data);
-					callback({success:true});
-				}
+				var messageType = data.istype; // image, music, PDF
+				var fileInfo = JSON.stringify({
+					filename: data.filename,
+					serverfilename: data.serverfilename,
+					size: data.size,
+					type: data.istype
+				});
+
+				// 保存文件消息到数据库
+				db.saveMessage(
+					data.roomCode,
+					data.username,
+					data.userAvatar,
+					messageType,
+					data.msg || '[文件消息]',
+					fileInfo
+				).then(function(messageId) {
+					console.log('文件消息已保存，ID:', messageId);
+					data.messageId = messageId;
+
+					// 根据文件类型发送不同的事件
+					if(data.istype == "image"){
+						// 图片文件：发送图片消息事件
+						ios.sockets.emit('new message image', data);
+						callback({success:true, messageId: messageId});
+					} else if(data.istype == "music"){
+						// 音频文件：发送音频消息事件
+						ios.sockets.emit('new message music', data);
+						callback({success:true, messageId: messageId});
+					} else if(data.istype == "PDF"){
+						// PDF文件：发送PDF消息事件
+						ios.sockets.emit('new message PDF', data);
+						callback({success:true, messageId: messageId});
+					}
+				}).catch(function(err) {
+					console.error('保存文件消息失败:', err);
+					callback({success: false, message: '保存消息失败'});
+				});
 			}else{
 				callback({ success:false});
 			}
@@ -620,17 +645,41 @@ app.post('/v1/uploadImage',function (req, res){
 		var host = req.get('host');
 		data.serverfilename = protocol + '://' + host + '/' + path.parse(data.serverfilename).base;
 		//console.log(data);
-	    var image_file = { 
+	    var image_file = {
 		        dwid : fields.dwid,
 		        filename : files.file.name,
 				roomCode: fields.roomCode,
 		        filetype : fields.istype,
 		        serverfilename : baseName(files.file.path),
 		        serverfilepath : files.file.path,
-		        expirytime : imgdatetimenow + (3600000 * expiryTime)           
+		        expirytime : imgdatetimenow + (3600000 * expiryTime)
 	    };
 	    files_array.push(image_file);
-		ios.sockets.emit('new message image', data);
+
+		// 保存图片消息到数据库
+		var fileInfo = JSON.stringify({
+			filename: files.file.name,
+			serverfilename: data.serverfilename,
+			size: bytesToSize(files.file.size),
+			type: 'image'
+		});
+
+		db.saveMessage(
+			fields.roomCode,
+			fields.username,
+			fields.userAvatar,
+			'image',
+			fields.msg || '[图片消息]',
+			fileInfo
+		).then(function(messageId) {
+			console.log('图片消息已保存，ID:', messageId);
+			data.messageId = messageId;
+			ios.sockets.emit('new message image', data);
+		}).catch(function(err) {
+			console.error('保存图片消息失败:', err);
+			// 即使保存失败，也发送事件以便用户能看到消息
+			ios.sockets.emit('new message image', data);
+		});
     });
 });
 
@@ -670,17 +719,40 @@ app.post('/v1/uploadAudio',function (req, res){
 		var protocol = req.protocol;
 		var host = req.get('host');
 		data.serverfilename = protocol + '://' + host + '/' + path.parse(data.serverfilename).base;
-	    var audio_file = { 
+	    var audio_file = {
 		        dwid : fields.dwid,
 		        filename : files.file.name,
 				roomCode: fields.roomCode,
 		        filetype : fields.istype,
 		        serverfilename : baseName(files.file.path),
 		        serverfilepath : files.file.path,
-		        expirytime : imgdatetimenow + (3600000 * expiryTime)           
+		        expirytime : imgdatetimenow + (3600000 * expiryTime)
 	    };
 	    files_array.push(audio_file);
-		ios.sockets.emit('new message music', data);
+
+		// 保存音频消息到数据库
+		var fileInfo = JSON.stringify({
+			filename: files.file.name,
+			serverfilename: data.serverfilename,
+			size: bytesToSize(files.file.size),
+			type: 'music'
+		});
+
+		db.saveMessage(
+			fields.roomCode,
+			fields.username,
+			fields.userAvatar,
+			'music',
+			fields.msg || '[音频消息]',
+			fileInfo
+		).then(function(messageId) {
+			console.log('音频消息已保存，ID:', messageId);
+			data.messageId = messageId;
+			ios.sockets.emit('new message music', data);
+		}).catch(function(err) {
+			console.error('保存音频消息失败:', err);
+			ios.sockets.emit('new message music', data);
+		});
     });
 });
 
@@ -717,17 +789,40 @@ app.post('/v1/uploadPDF',function (req, res){
 		var protocol = req.protocol;
 		var host = req.get('host');
 		data.serverfilename = protocol + '://' + host + '/' + path.parse(data.serverfilename).base;
-	    var pdf_file = { 
+	    var pdf_file = {
 		        dwid : fields.dwid,
 		        filename : files.file.name,
 				roomCode: fields.roomCode,
 		        filetype : fields.istype,
 		        serverfilename : baseName(files.file.path),
 		        serverfilepath : files.file.path,
-		        expirytime : imgdatetimenow + (3600000 * expiryTime)           
+		        expirytime : imgdatetimenow + (3600000 * expiryTime)
 	    };
 	    files_array.push(pdf_file);
-		ios.sockets.emit('new message PDF', data);
+
+		// 保存PDF消息到数据库
+		var fileInfo = JSON.stringify({
+			filename: files.file.name,
+			serverfilename: data.serverfilename,
+			size: bytesToSize(files.file.size),
+			type: 'PDF'
+		});
+
+		db.saveMessage(
+			fields.roomCode,
+			fields.username,
+			fields.userAvatar,
+			'PDF',
+			fields.msg || '[文档消息]',
+			fileInfo
+		).then(function(messageId) {
+			console.log('PDF消息已保存，ID:', messageId);
+			data.messageId = messageId;
+			ios.sockets.emit('new message PDF', data);
+		}).catch(function(err) {
+			console.error('保存PDF消息失败:', err);
+			ios.sockets.emit('new message PDF', data);
+		});
     });
 });
 
@@ -885,7 +980,23 @@ app.get('/v1/messages/:roomCode', function(req, res) {
                 var isGif = msg.message_type === 'gif';
                 var hasFile = msg.message_type === 'image' || msg.message_type === 'music' || msg.message_type === 'pdf';
                 var hasMsg = msg.message_type === 'text' || msg.message_type === 'meme' || msg.message_type === 'gif';
-                
+
+                // 解析 fileInfo
+                var fileInfo = null;
+                var serverfilename = null;
+                var filename = null;
+                var size = null;
+                if (msg.file_info) {
+                    try {
+                        fileInfo = JSON.parse(msg.file_info);
+                        serverfilename = fileInfo.serverfilename;
+                        filename = fileInfo.filename;
+                        size = fileInfo.size;
+                    } catch (e) {
+                        console.error('解析fileInfo失败:', e);
+                    }
+                }
+
                 return {
                     id: msg.id,
                     messageId: msg.id, // 兼容前端的messageId字段
@@ -896,11 +1007,17 @@ app.get('/v1/messages/:roomCode', function(req, res) {
                     isImageMSG: isImageMSG,
                     isMeme: isMeme,
                     isGif: isGif,
+                    isImageFile: isImageMSG, // 兼容前端
                     hasMsg: hasMsg,
                     hasFile: hasFile,
                     createdAt: msg.created_at,
                     msgTime: formatTime(new Date(msg.created_at)),
-                    status: 'sent' // 默认消息状态
+                    status: 'sent', // 默认消息状态
+                    // 文件相关字段（与实时消息格式一致）
+                    serverfilename: serverfilename,
+                    filename: filename,
+                    size: size,
+                    istype: msg.message_type // 文件类型
                 };
             });
 
@@ -967,13 +1084,16 @@ app.get('/api/export-chat', async function(req, res) {
 // 阅后即焚消息销毁 API
 app.post('/api/burn-message', async function(req, res) {
     try {
-        var messageId = parseInt(req.body.messageId);
+        var messageId = req.body.messageId;
+        console.log('[BurnAfterReading] 收到销毁请求, messageId:', messageId, '类型:', typeof messageId);
 
         if (!messageId) {
             return res.status(400).json({ success: false, error: '消息ID不能为空' });
         }
 
+        // 支持字符串格式的 messageId（如 'burn_1234567890'）
         var deleted = await db.deleteBurnAfterReadingMessage(messageId);
+        console.log('[BurnAfterReading] 删除结果:', deleted);
 
         if (deleted === true) {
             ios.emit('message-burned', { messageId: messageId });

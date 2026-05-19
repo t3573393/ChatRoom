@@ -150,6 +150,7 @@ html,body{height:100%;}
 .direct-chat-msg {
     margin-bottom: 15px !important; /* 添加重要性声明确保生效 */
     clear: both; /* 确保清除前面的浮动 */
+    position: relative; /* 添加相对定位，确保绝对定位的子元素相对于此容器定位 */
 }
 .chat-box{
 	height: 20px;
