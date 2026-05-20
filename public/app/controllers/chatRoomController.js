@@ -412,6 +412,18 @@ angular.module('Controllers')
 	};
 	
 	$scope.destroyBurnMessage = function(messageId, isRemote) {
+		// 防止重复销毁 - 使用 destroyed 标志检测是否已处理过
+		if ($scope.burnMessages[messageId] && $scope.burnMessages[messageId].destroyed) {
+			console.log('阅后即焚消息已处理过(destroyed标志)，跳过:', messageId);
+			return;
+		}
+
+		// 防止重复销毁 - 检查是否正在销毁中
+		if ($scope.burnMessages[messageId] && $scope.burnMessages[messageId].destroying) {
+			console.log('阅后即焚消息正在销毁中，跳过:', messageId);
+			return;
+		}
+
 		// 防止重复销毁 - 检查消息是否还在数组中
 		var messageInArray = $scope.messeges.some(function(msg) {
 			return msg.id == messageId || msg.messageId == messageId;
@@ -423,7 +435,7 @@ angular.module('Controllers')
 				if ($scope.burnMessages[messageId].interval) {
 					clearInterval($scope.burnMessages[messageId].interval);
 				}
-				delete $scope.burnMessages[messageId];
+				$scope.burnMessages[messageId].destroyed = true;
 			}
 			return;
 		}
@@ -433,15 +445,14 @@ angular.module('Controllers')
 			delete $scope.burnTimers[messageId];
 		}
 
-		if ($scope.burnMessages[messageId] && $scope.burnMessages[messageId].destroying) {
-			return;
+		// 标记为正在销毁，防止其他流程进入
+		if (!$scope.burnMessages[messageId]) {
+			$scope.burnMessages[messageId] = {};
 		}
-		if ($scope.burnMessages[messageId]) {
-			$scope.burnMessages[messageId].destroying = true;
-		}
+		$scope.burnMessages[messageId].destroying = true;
 
 		// 清除定时器
-		if ($scope.burnMessages[messageId] && $scope.burnMessages[messageId].interval) {
+		if ($scope.burnMessages[messageId].interval) {
 			clearInterval($scope.burnMessages[messageId].interval);
 			delete $scope.burnMessages[messageId].interval;
 		}
@@ -463,10 +474,8 @@ angular.module('Controllers')
 			}, 500);
 		}
 
-		// 清理 burnMessages 对象
-		if ($scope.burnMessages[messageId]) {
-			delete $scope.burnMessages[messageId];
-		}
+		// 标记为已销毁
+		$scope.burnMessages[messageId].destroyed = true;
 
 		// 如果是远程触发的销毁（通过 message-burned 事件），不需要再次调用 API
 		if (isRemote) {
@@ -913,8 +922,12 @@ angular.module('Controllers')
 	};
 
 	$scope.getValidImageUrl = function(messege) {
-		if (messege.serverfilename && messege.serverfilename.startsWith('http')) {
-			return messege.serverfilename;
+		var serverFilename = messege.serverfilename || (messege.fileInfo && messege.fileInfo.serverfilename);
+		if (serverFilename) {
+			if (serverFilename.startsWith('http')) {
+				return serverFilename;
+			}
+			return $rootScope.baseUrl + '/' + serverFilename;
 		}
 		return '';
 	};
@@ -933,12 +946,15 @@ angular.module('Controllers')
 	};
 	function ScrolltoBottom(){
 		console.log("autoScroll = " + $scope.autoScroll + "- loggedIn = " + $rootScope.loggedIn);
-		
+
 			console.log("Entro scroll...");
 			$timeout(function() {
-				if($rootScope.loggedIn == true && $scope.autoScroll == true && $scope.mensajesNuevos == 0){				
-					$("#divBox").scrollTop($("#divBox")[0].scrollHeight);	
-					console.log("Aplicó scroll...");
+				if($rootScope.loggedIn == true && $scope.autoScroll == true && $scope.mensajesNuevos == 0){
+					var divBox = $("#divBox")[0];
+					if (divBox) {
+						$("#divBox").scrollTop(divBox.scrollHeight);
+						console.log("Aplicó scroll...");
+					}
 				}
 			}, 20);
 				
@@ -1306,23 +1322,22 @@ angular.module('Controllers')
 		if($('#inputText').val() != "" && $('#inputText').val() != undefined){
 			console.log($rootScope.username + " esta escribiendo...");
 			$socket.emit("user-writting",{ username : $rootScope.username}, function(data){
-				//delivery report code goes here
-				/*if (data.success == true) {
-					$scope.chatMsg = "";
-					$scope.setFocus = true;				
-				}*/
 			});
 		}
     	else{
 			console.log($rootScope.username + " dejo de escribir.");
 			$socket.emit("user-stop-writting",{ username : $rootScope.username}, function(data){
-				//delivery report code goes here
-				/*if (data.success == true) {
-					$scope.chatMsg = "";
-					$scope.setFocus = true;				
-				}*/
 			});
 		}
+	});
+
+	// 当输入框失去焦点时，停止"正在输入"状态
+	$("#inputText").on("blur", function(){
+		$socket.emit("user-stop-writting",{ username : $rootScope.username}, function(data){
+		});
+	});
+	// 确保用户进入时不是正在输入状态
+	$socket.emit("user-stop-writting", { username : $rootScope.username}, function(data){
 	});
 	$socket.emit('get-online-members',function(data){
 		console.log("get online members");
@@ -1759,31 +1774,51 @@ $scope.sendCode = function(){
 	// download image if it exists on server else return error message
 	$scope.downloadImage = function(ev, elem){
 		var search_id = elem.id;
+		console.log('downloadImage called, search_id:', search_id);
+
+		// 先通过 dwid 查找
+		var found = false;
     	for (var i = ($scope.messeges.length-1); i >= 0 ; i--) {
 			if($scope.messeges[i].hasFile){
 				if ($scope.messeges[i].istype === "image") {
-					if($scope.messeges[i].dwid === search_id){
-						$http.post($rootScope.baseUrl + "/v1/getfile",$scope.messeges[i]).success(function (response){
-					    	if(!response.isExpired){
-					    		var linkID = "#" + search_id + "A";
-					    		$(linkID).find('i').click();
-					    		return true;
-					    	}else{
-					    		var html = '<p id="alert">'+ response.expmsg +'</p>';
-								if ($( ".chat-box" ).has( "p" ).length < 1) {
-									$(html).hide().prependTo(".chat-box").fadeIn(1500);
-									$('#alert').delay(1000).fadeOut('slow', function(){
-										$('#alert').remove();
-									});
-								}	
-								return false;
-					    	}
-					    });				
-						break;	
+					if($scope.messeges[i].dwid === search_id || String($scope.messeges[i].messageId || $scope.messeges[i].id) === String(search_id)){
+						var messageData = $scope.messeges[i];
+						console.log('Found message to download:', messageData);
+
+						// 直接使用 serverfilename 下载，不依赖 files_array
+						var url = messageData.serverfilename || (messageData.fileInfo && messageData.fileInfo.serverfilename);
+						if (!url) {
+							console.error('No serverfilename found');
+							return;
+						}
+
+						// 如果不是完整URL，拼接 baseUrl
+						if (!url.startsWith('http')) {
+							url = $rootScope.baseUrl + '/' + url;
+						}
+
+						console.log('Downloading from URL:', url);
+
+						// 创建一个带 download 属性的隐藏链接来触发下载
+						var filename = messageData.filename || 'image';
+						var downloadLink = document.createElement('a');
+						downloadLink.href = url;
+						downloadLink.download = filename;
+						downloadLink.target = '_blank';
+						document.body.appendChild(downloadLink);
+						downloadLink.click();
+						document.body.removeChild(downloadLink);
+
+						found = true;
+						break;
 					}
-				}						
+				}
 			}
-		};
+		}
+
+		if (!found) {
+			console.log('Message not found for search_id:', search_id);
+		}
     }
 
     // sending new images function
@@ -1901,28 +1936,31 @@ $scope.sendCode = function(){
     	for (var i = ($scope.messeges.length-1); i >= 0 ; i--) {
 			if($scope.messeges[i].hasFile){
 				if ($scope.messeges[i].istype === "music") {
-					if($scope.messeges[i].dwid === search_id){
-						$http.post($rootScope.baseUrl + "/v1/getfile",$scope.messeges[i]).success(function (response){
-					    	if(!response.isExpired){
-					    		var linkID = "#" + search_id + "A";
-					    		$(linkID).find('i').click();
-					    		return true;
-					    	}else{
-					    		var html = '<p id="alert">'+ response.expmsg +'</p>';
-								if ($( ".chat-box" ).has( "p" ).length < 1) {
-									$(html).hide().prependTo(".chat-box").fadeIn(1500);
-									$('#alert').delay(1000).fadeOut('slow', function(){
-										$('#alert').remove();
-									});
-								}
-								return false;
-					    	}
-					    });				
-						break;	
+					if($scope.messeges[i].dwid === search_id || String($scope.messeges[i].messageId || $scope.messeges[i].id) === String(search_id)){
+						var url = $scope.messeges[i].serverfilename || ($scope.messeges[i].fileInfo && $scope.messeges[i].fileInfo.serverfilename);
+						if (!url) {
+							console.error('No serverfilename found for music');
+							return;
+						}
+						if (!url.startsWith('http')) {
+							url = $rootScope.baseUrl + '/' + url;
+						}
+
+						// 创建一个带 download 属性的隐藏链接来触发下载
+						var filename = $scope.messeges[i].filename || 'audio.mp3';
+						var downloadLink = document.createElement('a');
+						downloadLink.href = url;
+						downloadLink.download = filename;
+						downloadLink.target = '_blank';
+						document.body.appendChild(downloadLink);
+						downloadLink.click();
+						document.body.removeChild(downloadLink);
+
+						break;
 					}
-				}						
+				}
 			}
-		};
+		}
     }
 
     // validate file type to 'music file' function
@@ -2068,28 +2106,31 @@ $scope.sendCode = function(){
     	for (var i = ($scope.messeges.length-1); i >= 0 ; i--) {
 			if($scope.messeges[i].hasFile){
 				if ($scope.messeges[i].istype === "PDF") {
-					if($scope.messeges[i].dwid === search_id){
-						$http.post($rootScope.baseUrl + "/v1/getfile",$scope.messeges[i]).success(function (response){
-					    	if(!response.isExpired){
-					    		var linkID = "#" + search_id + "A";
-					    		$(linkID).find('i').click();
-					    		return true;
-					    	}else{
-					    		var html = '<p id="alert">'+ response.expmsg +'</p>';
-								if ($( ".chat-box" ).has( "p" ).length < 1) {
-									$(html).hide().prependTo(".chat-box").fadeIn(1500);
-									$('#alert').delay(1000).fadeOut('slow', function(){
-										$('#alert').remove();
-									});
-								}
-								return false;
-					    	}
-					    });				
-						break;	
+					if($scope.messeges[i].dwid === search_id || String($scope.messeges[i].messageId || $scope.messeges[i].id) === String(search_id)){
+						var url = $scope.messeges[i].serverfilename || ($scope.messeges[i].fileInfo && $scope.messeges[i].fileInfo.serverfilename);
+						if (!url) {
+							console.error('No serverfilename found for PDF');
+							return;
+						}
+						if (!url.startsWith('http')) {
+							url = $rootScope.baseUrl + '/' + url;
+						}
+
+						// 创建一个带 download 属性的隐藏链接来触发下载
+						var filename = $scope.messeges[i].filename || 'document.pdf';
+						var downloadLink = document.createElement('a');
+						downloadLink.href = url;
+						downloadLink.download = filename;
+						downloadLink.target = '_blank';
+						document.body.appendChild(downloadLink);
+						downloadLink.click();
+						document.body.removeChild(downloadLink);
+
+						break;
 					}
-				}						
+				}
 			}
-		};
+		}
     }
 
     // sending new 'document file' function

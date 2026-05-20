@@ -1014,6 +1014,7 @@ app.get('/v1/messages/:roomCode', function(req, res) {
                     msgTime: formatTime(new Date(msg.created_at)),
                     status: 'sent', // 默认消息状态
                     // 文件相关字段（与实时消息格式一致）
+                    dwid: 'hist_' + msg.id, // 历史消息的dwid
                     serverfilename: serverfilename,
                     filename: filename,
                     size: size,
